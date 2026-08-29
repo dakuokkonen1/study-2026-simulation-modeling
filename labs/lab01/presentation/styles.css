@@ -1,0 +1,39 @@
+:root {
+  --r-background-color: #071923;
+  --r-main-color: #f2fbfc;
+  --r-heading-color: #36d3b5;
+  --r-link-color: #70c7ec;
+  --r-main-font: "Aptos", "DejaVu Sans", sans-serif;
+  --r-heading-font: "Aptos Display", "DejaVu Sans", sans-serif;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal h1,
+.reveal h2 {
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.reveal h2 {
+  border-bottom: 3px solid #153f4b;
+  padding-bottom: 0.22em;
+}
+
+.reveal p,
+.reveal li {
+  line-height: 1.35;
+}
+
+.reveal img {
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 6px;
+  box-shadow: none;
+}
+
+.reveal code {
+  color: #70c7ec;
+}
