@@ -9,6 +9,31 @@
 
 Значимых изменений после выпуска пока нет.
 
+## [3.0.0] — 2026-08-30
+
+### Добавлено
+
+- дискретно-событийная модель системы массового обслуживания M/M/1
+  ([4048d5f](https://github.com/dakuokkonen1/study-2026-simulation-modeling/commit/4048d5fa7e420ed22b4b99fd5f2a8f007153f9d0));
+- аналитический расчёт стационарных характеристик и их сопоставление с
+  имитационными оценками;
+- нагрузочный эксперимент для семи значений интенсивности входного потока;
+- литературные сценарии, выполненные блокноты Jupyter, QMD, HTML, CSV и пять
+  графиков;
+- отчёт QMD/DOCX/PDF и самодостаточная HTML-презентация;
+- локальный журнал изменений лабораторной работы № 3.
+
+### Результаты
+
+| Компонент | Итог |
+|---|---|
+| Базовый режим | λ = 30, μ = 33, ρ = 0,9091 |
+| Согласие с теорией | Максимальная относительная ошибка 5,29% |
+| Нагрузочный эксперимент | Подтверждён нелинейный рост очереди при ρ → 1 |
+| Тестирование | Все 11 проверок завершились успешно |
+| Отчёт | QMD, DOCX и PDF, 7 страниц |
+| Презентация | QMD и самодостаточный HTML, 17 слайдов |
+
 ## [2.0.0] — 2026-08-29
 
 ### Добавлено
@@ -107,7 +132,8 @@
 - зафиксированные воспроизводимые результаты
   ([8898066](https://github.com/dakuokkonen1/study-2026-simulation-modeling/commit/8898066d3d8836e2259b0af3be290cffb05c370d)).
 
-[Не выпущено]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v2.0.0...HEAD
+[Не выпущено]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v1.0.0...v1.1.0

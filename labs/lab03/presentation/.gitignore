@@ -1,4 +1,4 @@
 /.quarto/
-/_output/
+/_site/
 
 **/*.quarto_ipynb

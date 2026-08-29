@@ -9,7 +9,7 @@
 |---:|---|---|
 | 1 | Подготовка стенда. Модель экспоненциального роста | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab01) |
 | 2 | Модели SIR и Лотки–Вольтерры | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab02) |
-| 3 | Лабораторная работа № 3 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab03) |
+| 3 | Система массового обслуживания M/M/1 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab03) |
 | 4 | Лабораторная работа № 4 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab04) |
 | 5 | Лабораторная работа № 5 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab05) |
 | 6 | Лабораторная работа № 6 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab06) |
@@ -58,8 +58,8 @@ make test
 ## История и публикации
 
 - [**Журнал изменений**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/CHANGELOG.md)
-- [**Релиз v2.0.0 на GitHub**](https://github.com/dakuokkonen1/study-2026-simulation-modeling/releases/tag/v2.0.0)
-- [**Релиз v2.0.0 на GitVerse**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/releases/tag/v2.0.0)
+- [**Релиз v3.0.0 на GitHub**](https://github.com/dakuokkonen1/study-2026-simulation-modeling/releases/tag/v3.0.0)
+- [**Релиз v3.0.0 на GitVerse**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/releases/tag/v3.0.0)
 
 ## Лицензия
 
