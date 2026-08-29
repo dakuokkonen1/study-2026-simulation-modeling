@@ -179,8 +179,8 @@ def main() -> None:
     )
     movie.command(
         "git add labs/lab01/presentation && git commit -m 'docs(lab01): add presentation'",
-        "[master d09ee84] docs(lab01): add presentation\n"
-        " 38 files changed, 1043 insertions(+), 21 deletions(-)",
+        "[master f1f7092] docs(lab01): add presentation\n"
+        " 17 files changed, 767 insertions(+), 205 deletions(-)",
         wait=2,
         line_delay=0.7,
         after=9,
@@ -188,9 +188,9 @@ def main() -> None:
     movie.command(
         "git push origin master && git push gitverse master",
         "To github.com:dakuokkonen1/study-2026-simulation-modeling.git\n"
-        "   31db6f7..d09ee84  master -> master\n"
+        "   3e014d0..f1f7092  master -> master\n"
         "To gitverse.ru:Dakuokkonen/study-2026-simulation-modeling.git\n"
-        "   31db6f7..d09ee84  master -> master\n"
+        "   3e014d0..f1f7092  master -> master\n"
         "Готово: презентация собрана и опубликована в двух репозиториях.",
         wait=3,
         line_delay=0.65,
