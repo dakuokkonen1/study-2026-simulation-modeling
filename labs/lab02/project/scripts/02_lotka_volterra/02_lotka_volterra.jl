@@ -1,0 +1,167 @@
+using DrWatson
+@quickactivate "project"
+
+ENV["GKSwstype"] = "100"
+
+using CSV
+using DataFrames
+using DifferentialEquations
+using JLD2
+using Plots
+
+include(srcdir("epidemic_ecology.jl"))
+using .EpidemicEcology
+
+script_name = "02_lotka_volterra"
+mkpath(datadir(script_name))
+mkpath(plotsdir(script_name))
+
+p = (alpha=0.1, beta=0.02, delta=0.01, gamma=0.3)
+u0 = [40.0, 9.0]
+tspan = (0.0, 400.0)
+saveat = 0.1
+
+problem = ODEProblem(
+    lotka_volterra!,
+    u0,
+    tspan,
+    (p.alpha, p.beta, p.delta, p.gamma),
+)
+solution = solve(problem, Tsit5(); saveat=saveat, reltol=1e-10, abstol=1e-12)
+
+trajectory = DataFrame(
+    time=solution.t,
+    prey=getindex.(solution.u, 1),
+    predator=getindex.(solution.u, 2),
+)
+trajectory.invariant = lotka_invariant.(
+    trajectory.prey,
+    trajectory.predator,
+    p.alpha,
+    p.beta,
+    p.delta,
+    p.gamma,
+)
+
+equilibrium_prey, equilibrium_predator = lotka_equilibrium(
+    p.alpha,
+    p.beta,
+    p.delta,
+    p.gamma,
+)
+invariant_drift = maximum(abs.(trajectory.invariant .- first(trajectory.invariant)))
+
+prey_peak_indices = [
+    index for index in 2:(nrow(trajectory) - 1)
+    if trajectory.prey[index] > trajectory.prey[index - 1] &&
+       trajectory.prey[index] >= trajectory.prey[index + 1]
+]
+period_estimate = length(prey_peak_indices) > 1 ?
+    sum(diff(trajectory.time[prey_peak_indices])) / (length(prey_peak_indices) - 1) : NaN
+
+CSV.write(datadir(script_name, "trajectory.csv"), trajectory)
+JLD2.jldsave(
+    datadir(script_name, "summary.jld2");
+    equilibrium_prey,
+    equilibrium_predator,
+    invariant_drift,
+    period_estimate,
+)
+
+println("=== Базовый эксперимент Лотки–Вольтерры ===")
+println("Равновесие (x*, y*) = (", equilibrium_prey, ", ", equilibrium_predator, ")")
+println("Диапазон x(t) = [", round(minimum(trajectory.prey); digits=4), ", ", round(maximum(trajectory.prey); digits=4), "]")
+println("Диапазон y(t) = [", round(minimum(trajectory.predator); digits=4), ", ", round(maximum(trajectory.predator); digits=4), "]")
+println("Оценка периода = ", round(period_estimate; digits=4))
+println("Максимальный дрейф первого интеграла = ", invariant_drift)
+
+default(fontfamily="DejaVu Sans", linewidth=2.3, framestyle=:box, gridalpha=0.22)
+
+dynamics_plot = plot(
+    trajectory.time,
+    trajectory.prey;
+    label="x(t): жертвы",
+    xlabel="Время",
+    ylabel="Численность",
+    title="Колебания популяций в модели Лотки–Вольтерры",
+    color=:green,
+    size=(1000, 620),
+)
+plot!(dynamics_plot, trajectory.time, trajectory.predator; label="y(t): хищники", color=:red)
+hline!(dynamics_plot, [equilibrium_prey]; label="x*", linestyle=:dash, color=:darkgreen)
+hline!(dynamics_plot, [equilibrium_predator]; label="y*", linestyle=:dash, color=:darkred)
+savefig(dynamics_plot, plotsdir(script_name, "lotka_dynamics.png"))
+
+phase_plot = plot(
+    trajectory.prey,
+    trajectory.predator;
+    label="замкнутая орбита",
+    xlabel="x(t): жертвы",
+    ylabel="y(t): хищники",
+    title="Фазовый портрет системы",
+    color=:blue,
+    size=(850, 680),
+)
+scatter!(phase_plot, [equilibrium_prey], [equilibrium_predator]; label="равновесие", color=:black)
+scatter!(phase_plot, [first(trajectory.prey)], [first(trajectory.predator)]; label="начальное состояние", color=:orange)
+savefig(phase_plot, plotsdir(script_name, "lotka_phase.png"))
+
+invariant_plot = plot(
+    trajectory.time,
+    trajectory.invariant .- first(trajectory.invariant);
+    label="H(t) - H(0)",
+    xlabel="Время",
+    ylabel="Отклонение первого интеграла",
+    title="Численный контроль инварианта",
+    color=:purple,
+    size=(1000, 620),
+)
+savefig(invariant_plot, plotsdir(script_name, "lotka_invariant.png"))
+
+initial_conditions = [[20.0, 4.0], [30.0, 12.0], [40.0, 9.0], [55.0, 6.0]]
+family_plot = plot(
+    xlabel="x(t): жертвы",
+    ylabel="y(t): хищники",
+    title="Семейство орбит при разных начальных условиях",
+    size=(850, 680),
+)
+summary_rows = NamedTuple[]
+
+for initial_state in initial_conditions
+    local_solution = solve(
+        remake(problem; u0=initial_state),
+        Tsit5();
+        saveat=saveat,
+        reltol=1e-10,
+        abstol=1e-12,
+    )
+    local_prey = getindex.(local_solution.u, 1)
+    local_predator = getindex.(local_solution.u, 2)
+    local_invariant = lotka_invariant.(
+        local_prey,
+        local_predator,
+        p.alpha,
+        p.beta,
+        p.delta,
+        p.gamma,
+    )
+    push!(summary_rows, (
+        prey0=initial_state[1],
+        predator0=initial_state[2],
+        prey_min=minimum(local_prey),
+        prey_max=maximum(local_prey),
+        predator_min=minimum(local_predator),
+        predator_max=maximum(local_predator),
+        invariant_drift=maximum(abs.(local_invariant .- first(local_invariant))),
+    ))
+    plot!(family_plot, local_prey, local_predator; label="($(initial_state[1]), $(initial_state[2]))")
+end
+
+scatter!(family_plot, [equilibrium_prey], [equilibrium_predator]; label="равновесие", color=:black)
+initial_summary = DataFrame(summary_rows)
+CSV.write(datadir(script_name, "initial_conditions.csv"), initial_summary)
+savefig(family_plot, plotsdir(script_name, "lotka_orbit_family.png"))
+
+println("\n=== Семейство начальных условий ===")
+show(initial_summary; allrows=true, allcols=true)
+println()

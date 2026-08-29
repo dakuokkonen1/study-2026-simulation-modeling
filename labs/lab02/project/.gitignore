@@ -1,0 +1,11 @@
+.julia/
+.jupyter/
+.quarto/
+.cache/
+data/**/*.jld2
+markdown/**/.quarto/
+notebooks/**/.ipynb_checkpoints/
+artifacts/
+plots/
+*.log
+!Manifest.toml
