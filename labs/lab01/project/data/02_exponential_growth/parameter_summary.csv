@@ -1,0 +1,6 @@
+alpha,final_population,doubling_time,result_file
+0.1,2.718281717210176,6.931471805599452,/workspace/labs/lab01/project/data/02_exponential_growth/parametric_scan/scan_alpha=0.1_saveat=0.1_tmax=10.0_u0=1.0.jld2
+0.3,20.085448516186737,2.3104906018664844,/workspace/labs/lab01/project/data/02_exponential_growth/parametric_scan/scan_alpha=0.3_saveat=0.1_tmax=10.0_u0=1.0.jld2
+0.5,148.4086214928792,1.3862943611198906,/workspace/labs/lab01/project/data/02_exponential_growth/parametric_scan/scan_alpha=0.5_saveat=0.1_tmax=10.0_u0=1.0.jld2
+0.8,2980.5735517835565,0.8664339756999315,/workspace/labs/lab01/project/data/02_exponential_growth/parametric_scan/scan_alpha=0.8_saveat=0.1_tmax=10.0_u0=1.0.jld2
+1.0,22021.015566268696,0.6931471805599453,/workspace/labs/lab01/project/data/02_exponential_growth/parametric_scan/scan_alpha=1.0_saveat=0.1_tmax=10.0_u0=1.0.jld2

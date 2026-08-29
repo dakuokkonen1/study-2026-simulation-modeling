@@ -22,8 +22,8 @@ notebooks:
 		notebooks/02_exponential_growth/02_exponential_growth.ipynb
 
 docs:
-	quarto render markdown/01_exponential_growth/01_exponential_growth.qmd --to html
-	quarto render markdown/02_exponential_growth/02_exponential_growth.qmd --to html
+	quarto render markdown/01_exponential_growth/01_exponential_growth.qmd --to html --embed-resources
+	quarto render markdown/02_exponential_growth/02_exponential_growth.qmd --to html --embed-resources
 
 test:
 	julia --project=. test/runtests.jl
