@@ -1,0 +1,49 @@
+:root {
+  --r-background-color: #ffffff;
+  --r-main-color: #17324d;
+  --r-heading-color: #005a9c;
+  --r-link-color: #0077bd;
+  --r-main-font: Arial, "DejaVu Sans", sans-serif;
+  --r-heading-font: Arial, "DejaVu Sans", sans-serif;
+}
+
+.reveal .slides { text-align: left; }
+.reveal h1, .reveal h2 { text-transform: none; letter-spacing: normal; }
+.reveal h1 {
+  color: #ffffff;
+  background: #005a9c;
+  padding: 0.55em 0.75em;
+  border-left: 0.18em solid #61a9d8;
+}
+.reveal h2 {
+  color: #ffffff;
+  background: #005a9c;
+  margin: -0.35em -0.55em 0.6em;
+  padding: 0.28em 0.55em;
+  border-bottom: 0.12em solid #61a9d8;
+}
+.reveal strong { color: #005a9c; }
+.reveal table { font-size: 0.72em; }
+.reveal table th { color: #ffffff; background: #005a9c; }
+.reveal table tr:nth-child(even) { background: #edf5fb; }
+.reveal p, .reveal li { line-height: 1.26; }
+.reveal img {
+  border: 1px solid #a9c5da;
+  border-radius: 0;
+  box-shadow: none;
+  background: #ffffff;
+  padding: 3px;
+  max-height: 510px;
+}
+.reveal .slide-logo {
+  display: block !important;
+  max-height: 58px !important;
+  right: 24px !important;
+  bottom: 18px !important;
+  background: #ffffff;
+  padding: 4px;
+}
+.reveal .slide-number { color: #005a9c; }
+.reveal .progress { color: #005a9c; }
+.reveal .small { font-size: 0.72em; }
+.reveal .compact li { margin-bottom: 0.18em; }
