@@ -233,12 +233,21 @@ def format_document(source: Path, destination: Path):
         code.paragraph_format.space_after = Pt(8)
         code.paragraph_format.first_line_indent = Cm(0)
         code.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        code.paragraph_format.keep_with_next = True
 
     for paragraph in doc.paragraphs:
         paragraph.paragraph_format.widow_control = True
         for run in paragraph.runs:
             if paragraph.style.name != "Source Code":
                 set_run_font(run)
+        if paragraph.text.startswith("Листинг "):
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.paragraph_format.first_line_indent = Cm(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            paragraph.paragraph_format.space_before = Pt(2)
+            paragraph.paragraph_format.space_after = Pt(10)
+            for run in paragraph.runs:
+                set_run_font(run, size=10, italic=True, color=INK)
 
     for table in iter_tables(doc):
         if len(table.columns) == 1 and len(table.rows) == 1:

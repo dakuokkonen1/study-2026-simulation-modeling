@@ -150,6 +150,9 @@ $$
 Правая часть ОДУ принимает как число, так и именованный кортеж параметров, что
 позволяет использовать одну модель в обоих экспериментах.
 
+Ключевые функции общего модуля приведены в листинге 1. Именно этот файл
+подключается обоими вычислительными сценариями.
+
 ```julia
 function exponential_growth!(du, u, p, t)
     alpha = p isa Number ? p : p.alpha
@@ -161,11 +164,47 @@ analytic_solution(u0, alpha, t) = u0 * exp(alpha * t)
 doubling_time(alpha) = log(2) / alpha
 ```
 
+Листинг 1 — Общий модуль модели `src/exponential_growth.jl`
+
 ## Одиночный эксперимент
 
 Для базового эксперимента использованы параметры $u_0=1$, $\alpha=0.3$,
 $t\in[0,10]$, шаг сохранения $0.1$. Литературный скрипт одновременно содержит
 объяснение и исполняемый Julia-код.
+
+В листинге 2 показана основная вычислительная часть сценария: постановка задачи
+Коши, решение методом `Tsit5`, формирование таблицы и сохранение графика. Полный
+файл находится по пути `scripts/01_exponential_growth.jl`.
+
+```julia
+u0 = 1.0
+alpha = 0.3
+tspan = (0.0, 10.0)
+saveat = 0.1
+
+problem = ODEProblem(exponential_growth!, [u0], tspan, alpha)
+solution = solve(problem, Tsit5(); saveat=saveat)
+
+results = DataFrame(
+    time=solution.t,
+    numerical=first.(solution.u),
+    analytical=analytic_solution.(u0, alpha, solution.t),
+)
+results.error = abs.(results.numerical .- results.analytical)
+
+final_population = last(results.numerical)
+expected_population = last(results.analytical)
+relative_error = abs(final_population - expected_population) / expected_population
+
+CSV.write(datadir(script_name, "trajectory.csv"), results)
+trajectory_plot = plot(results.time, results.numerical;
+    label="Численное решение", linewidth=3)
+plot!(trajectory_plot, results.time, results.analytical;
+    label="Аналитическое решение", linestyle=:dash)
+savefig(trajectory_plot, plotsdir(script_name, "exponential_growth.png"))
+```
+
+Листинг 2 — Основная часть `scripts/01_exponential_growth.jl`
 
 ![Фрагмент литературного исходного кода первого эксперимента](image/terminal/05-literate-source.png){#fig-lit width=92%}
 
@@ -184,6 +223,55 @@ $4.40\cdot10^{-6}$. Теоретическое время удвоения ра�
 $\alpha\in\{0.1,0.3,0.5,0.8,1.0\}$, а $u_0$, интервал времени, решатель и шаг
 сохранения остаются постоянными. `DrWatson.produce_or_load` формирует имя файла
 из параметров и повторно использует уже рассчитанный результат.
+
+Функция одного запуска и обход сетки параметров приведены в листинге 3. Такое
+разделение позволяет добавлять новые значения $\alpha$ без дублирования кода
+численного решения.
+
+```julia
+function run_experiment(parameters::Dict)
+    u0 = parameters[:u0]
+    alpha = parameters[:alpha]
+    tspan = (0.0, parameters[:tmax])
+
+    problem = ODEProblem(
+        exponential_growth!, [u0], tspan, (alpha=alpha,)
+    )
+    solution = solve(problem, Tsit5(); saveat=parameters[:saveat])
+
+    return Dict(
+        "time" => collect(solution.t),
+        "population" => first.(solution.u),
+        "final_population" => last(solution.u)[1],
+        "doubling_time" => doubling_time(alpha),
+    )
+end
+
+parameter_grid = Dict(
+    :u0 => [1.0],
+    :alpha => [0.1, 0.3, 0.5, 0.8, 1.0],
+    :tmax => [10.0],
+    :saveat => [0.1],
+)
+
+summary_rows = NamedTuple[]
+for parameters in dict_list(parameter_grid)
+    data, path = produce_or_load(
+        datadir(script_name, "parametric_scan"),
+        parameters,
+        run_experiment;
+        prefix="scan", tag=false, verbose=false,
+    )
+    push!(summary_rows, (
+        alpha=parameters[:alpha],
+        final_population=data["final_population"],
+        doubling_time=data["doubling_time"],
+        result_file=path,
+    ))
+end
+```
+
+Листинг 3 — Функция эксперимента и сетка параметров в `scripts/02_exponential_growth.jl`
 
 | $\alpha$ | $u(10)$ | $T_2=\ln2/\alpha$ |
 |---:|---:|---:|
@@ -225,6 +313,39 @@ $\alpha\in\{0.1,0.3,0.5,0.8,1.0\}$, а $u_0$, интервал времени, �
 - чистый Julia-скрипт для пакетного запуска;
 - Quarto-документ для читаемой HTML-документации;
 - Jupyter-ноутбук для интерактивного воспроизведения.
+
+В листинге 4 показано, как для каждого исходного файла создаются согласованные
+версии Julia, IPYNB и QMD в предназначенных для них каталогах.
+
+```julia
+using DrWatson
+@quickactivate "project"
+using Literate
+
+function generate_formats(source::AbstractString)
+    isfile(source) || error("Source file not found: $(source)")
+
+    script_name = splitext(basename(source))[1]
+    clean_dir = scriptsdir(script_name)
+    quarto_dir = projectdir("markdown", script_name)
+    notebook_dir = projectdir("notebooks", script_name)
+
+    mkpath(clean_dir)
+    mkpath(quarto_dir)
+    mkpath(notebook_dir)
+    Literate.script(source, clean_dir;
+        name=script_name, credit=false)
+    Literate.notebook(source, notebook_dir;
+        name=script_name, execute=false, credit=false)
+    Literate.markdown(source, quarto_dir;
+        name=script_name,
+        flavor=Literate.QuartoFlavor(), credit=false)
+end
+
+foreach(generate_formats, ARGS)
+```
+
+Листинг 4 — Генератор производных форматов `scripts/tangle.jl`
 
 ![Генерация чистого кода, Quarto-документов и ноутбуков](image/terminal/07-generated-formats.png){#fig-generated width=92%}
 
@@ -289,6 +410,44 @@ docker compose build
 docker compose run --rm lab01 make setup
 docker compose run --rm lab01 make all
 ```
+
+Связь между отдельными этапами зафиксирована в `Makefile` (листинг 5). Цель
+`all` последовательно генерирует форматы, выполняет расчёты и ноутбуки, собирает
+документацию и запускает тесты.
+
+```makefile
+.PHONY: setup tangle run notebooks docs test all
+
+setup:
+	julia --project=. scripts/setup_environment.jl
+
+tangle:
+	julia --project=. scripts/tangle.jl scripts/01_exponential_growth.jl
+	julia --project=. scripts/tangle.jl scripts/02_exponential_growth.jl
+
+run:
+	julia --project=. scripts/01_exponential_growth.jl
+	julia --project=. scripts/02_exponential_growth.jl
+
+notebooks:
+	jupyter nbconvert --to notebook --execute --inplace \
+		--ExecutePreprocessor.kernel_name=julia-lab01-1.11 \
+		notebooks/01_exponential_growth/01_exponential_growth.ipynb
+	jupyter nbconvert --to notebook --execute --inplace \
+		--ExecutePreprocessor.kernel_name=julia-lab01-1.11 \
+		notebooks/02_exponential_growth/02_exponential_growth.ipynb
+
+docs:
+	quarto render markdown/01_exponential_growth/01_exponential_growth.qmd --to html
+	quarto render markdown/02_exponential_growth/02_exponential_growth.qmd --to html
+
+test:
+	julia --project=. test/runtests.jl
+
+all: tangle run notebooks docs test
+```
+
+Листинг 5 — Основные цели `labs/lab01/project/Makefile`
 
 Отдельные этапы доступны как цели `make tangle`, `make run`, `make notebooks`,
 `make docs` и `make test`. Отчёт собирается командой `make` в каталоге

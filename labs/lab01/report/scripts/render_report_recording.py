@@ -21,7 +21,8 @@ def render_pdf_pages(pdf: Path, output: Path) -> dict[int, Path]:
     output.mkdir(parents=True, exist_ok=True)
     prefix = output / "page"
     subprocess.run(["pdftoppm", "-png", "-r", "105", str(pdf), str(prefix)], check=True)
-    return {index: output / f"page-{index:02d}.png" for index in range(1, 23)}
+    rendered = sorted(output.glob("page-*.png"))
+    return {index: page for index, page in enumerate(rendered, start=1)}
 
 
 def main() -> None:
@@ -139,6 +140,26 @@ def main() -> None:
         snapshot="06-editor-result.png",
     )
 
+    movie.editor(
+        "simulation-modeling-lab01-report.qmd",
+        "## Общий модуль\n\n"
+        "Ключевые функции общего модуля приведены в листинге 1.\n\n",
+    )
+    movie.type_text(
+        "```julia\n"
+        "function exponential_growth!(du, u, p, t)\n"
+        "    alpha = p isa Number ? p : p.alpha\n"
+        "    du[1] = alpha * u[1]\n"
+        "    return nothing\n"
+        "end\n\n"
+        "analytic_solution(u0, alpha, t) = u0 * exp(alpha * t)\n"
+        "doubling_time(alpha) = log(2) / alpha\n"
+        "```\n\n"
+        "Листинг 1 — Общий модуль модели `src/exponential_growth.jl`\n",
+        after=14,
+        snapshot="06a-editor-listing.png",
+    )
+
     movie.terminal("dakuokkonen@lab01:~/study/labs/lab01/report$", clear=True)
     movie.command(
         "make all",
@@ -160,7 +181,7 @@ def main() -> None:
         "Title:           Лабораторная работа № 1\n"
         "Author:          Куокконен Дарина Андреевна\n"
         "Creator:         LibreOffice\n"
-        "Pages:           22\n"
+        "Pages:           26\n"
         "Page size:       595.304 x 841.89 pts (A4)\n"
         "Encrypted:       no\n"
         "PDF version:     1.7",
@@ -174,10 +195,10 @@ def main() -> None:
         (2, "Содержание", "10-report-contents.png"),
         (4, "Математическая модель", "11-report-theory.png"),
         (7, "Среда и пакеты", "12-report-environment.png"),
-        (10, "Реализация модели", "13-report-code.png"),
-        (14, "Jupyter и результаты", "14-report-jupyter.png"),
-        (18, "Параметрическое исследование", "15-report-scan.png"),
-        (22, "Выводы и источники", "16-report-conclusion.png"),
+        (8, "Листинг одиночного эксперимента", "13-report-code.png"),
+        (11, "Листинг параметрического расчёта", "14-report-scan-code.png"),
+        (17, "Выполненные Jupyter-ноутбуки", "15-report-jupyter.png"),
+        (25, "Makefile и выводы", "16-report-conclusion.png"),
     ):
         movie.show_image(pages[page], label, duration=20, snapshot=snapshot)
 
