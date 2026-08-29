@@ -1,0 +1,12 @@
+services:
+  lab01:
+    image: simulation-modeling-lab01:1.0.0
+    build:
+      context: .
+    init: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../../..:/workspace
+      - ./.quarto:/home/dakuokkonen/.local/share/quarto
+    working_dir: /workspace/labs/lab01/project
