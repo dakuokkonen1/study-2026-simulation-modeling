@@ -9,6 +9,33 @@
 
 Значимых изменений после выпуска пока нет.
 
+## [4.0.0] — 2026-08-30
+
+### Добавлено
+
+- имитационная модель 25 конкурирующих TCP/Reno-потоков и активного
+  управления очередью RED
+  ([1187573](https://github.com/dakuokkonen1/study-2026-simulation-modeling/commit/118757364f172c4b755dcd1540f6db1b1e7f82a2));
+- динамика AIMD, сглаженная очередь EWMA, ранний сброс и физическое
+  обслуживание пакетов узкого места 20 Мбит/с;
+- эксперимент по числу потоков от 5 до 40;
+- литературные сценарии, выполненные блокноты Jupyter, QMD, HTML, CSV и шесть
+  графиков;
+- отчёт QMD/DOCX/PDF и самодостаточная HTML-презентация;
+- локальный журнал изменений лабораторной работы № 4.
+
+### Результаты
+
+| Компонент | Итог |
+|---|---|
+| Базовый режим | 25 потоков, 18,7654 Мбит/с, средняя очередь 58,7519 пакета |
+| TCP/Reno | Получена характерная пилообразная AIMD-динамика окна |
+| RED | Средняя очередь удерживается ниже qmin и лимита 300 пакетов |
+| Параметрический эксперимент | Исследованы 5–40 конкурирующих потоков |
+| Тестирование | Все 10 проверок завершились успешно |
+| Отчёт | QMD, DOCX и PDF, 7 страниц |
+| Презентация | QMD и самодостаточный HTML, 17 слайдов |
+
 ## [3.0.0] — 2026-08-30
 
 ### Добавлено
@@ -132,7 +159,8 @@
 - зафиксированные воспроизводимые результаты
   ([8898066](https://github.com/dakuokkonen1/study-2026-simulation-modeling/commit/8898066d3d8836e2259b0af3be290cffb05c370d)).
 
-[Не выпущено]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v3.0.0...HEAD
+[Не выпущено]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/dakuokkonen1/study-2026-simulation-modeling/compare/v1.1.0...v1.2.0
