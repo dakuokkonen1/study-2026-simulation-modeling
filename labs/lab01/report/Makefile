@@ -1,35 +1,25 @@
-ROOT := ../../..
-IMAGE := simulation-modeling-lab01:1.0.0
 OUTPUT := _output
 SOURCE := simulation-modeling-lab01-report.qmd
 SOFFICE ?= soffice
-PYTHON ?= /Users/qxar/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3
+FINAL_DOCX := simulation-modeling-lab01-report.docx
+FINAL_PDF := simulation-modeling-lab01-report.pdf
 
-.PHONY: all html docx pdf verify clean
+.PHONY: all docx pdf verify clean
 
-all: html docx pdf verify
-
-html:
-	docker run --rm -v "$(abspath $(ROOT)):/workspace" -w /workspace/labs/lab01/report $(IMAGE) \
-		quarto render $(SOURCE) --to html
+all: docx pdf verify
 
 docx:
-	docker run --rm -v "$(abspath $(ROOT)):/workspace" -w /workspace/labs/lab01/report $(IMAGE) \
-		quarto render $(SOURCE) --to docx
-	mv $(OUTPUT)/simulation-modeling-lab01-report.docx $(OUTPUT)/simulation-modeling-lab01-report.raw.docx
-	$(PYTHON) scripts/polish_docx.py \
-		$(OUTPUT)/simulation-modeling-lab01-report.raw.docx \
-		$(OUTPUT)/simulation-modeling-lab01-report.docx
-	rm -f $(OUTPUT)/simulation-modeling-lab01-report.raw.docx
+	quarto render $(SOURCE) --to docx
+	cp $(OUTPUT)/$(FINAL_DOCX) $(FINAL_DOCX)
 
 pdf: docx
 	$(SOFFICE) --headless --convert-to pdf --outdir $(OUTPUT) \
-		$(OUTPUT)/simulation-modeling-lab01-report.docx
+		$(OUTPUT)/$(FINAL_DOCX)
+	cp $(OUTPUT)/$(FINAL_PDF) $(FINAL_PDF)
 
 verify:
-	@test -s $(OUTPUT)/simulation-modeling-lab01-report.html
-	@test -s $(OUTPUT)/simulation-modeling-lab01-report.docx
-	@test -s $(OUTPUT)/simulation-modeling-lab01-report.pdf
+	@test -s $(FINAL_DOCX)
+	@test -s $(FINAL_PDF)
 
 clean:
 	rm -rf $(OUTPUT) .quarto

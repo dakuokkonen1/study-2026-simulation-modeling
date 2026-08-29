@@ -7,12 +7,15 @@ format:
   revealjs:
     embed-resources: true
     slide-number: true
-    transition: fade
-    background-transition: fade
+    transition: slide
+    background-transition: none
     width: 1280
     height: 720
-    margin: 0.08
-    center: false
+    margin: 0.2
+    center: true
     controls: true
     progress: true
+    smaller: true
+    theme: simple
+    logo: ../image/logo-rudn.png
     css: styles.css

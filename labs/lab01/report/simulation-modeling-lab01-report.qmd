@@ -54,7 +54,7 @@ abstract: |
    отчёт;
 6. зафиксировать результат тестами, коммитами, тегом и релизом.
 
-![Проверка структуры курса: в репозитории предусмотрено восемь лабораторных работ](image/terminal/03-eight-labs.png){#fig-labs width=92%}
+![Проверка структуры курса: в репозитории предусмотрено восемь лабораторных работ](../image/03-terminal.png){#fig-labs width=92%}
 
 # Теоретическая часть
 
@@ -113,11 +113,11 @@ $$
 `Project.toml` и `Manifest.toml`. Поэтому локальные настройки других проектов
 не меняются, а результаты можно повторить на другом компьютере.
 
-![Проверка пользователя, каталога проекта и конфигурации Git](image/terminal/01-user-and-git.png){#fig-user width=92%}
+![Проверка пользователя, каталога проекта и конфигурации Git](../image/01-terminal.png){#fig-user width=92%}
 
-![Изолированные удалённые репозитории GitHub и GitVerse](image/terminal/02-remotes.png){#fig-remotes width=92%}
+![Изолированные удалённые репозитории GitHub и GitVerse](../image/02-terminal.png){#fig-remotes width=92%}
 
-![Состав воспроизводимой среды лабораторной работы](image/terminal/04-environment.png){#fig-env width=92%}
+![Состав воспроизводимой среды лабораторной работы](../image/04-terminal.png){#fig-env width=92%}
 
 Основные зависимости приведены в @tbl-deps.
 
@@ -136,7 +136,7 @@ $$
 
 : Закреплённые версии основных пакетов {#tbl-deps}
 
-![Вывод состояния Julia-проекта и установленных пакетов](image/terminal/07-installed-packages.png){#fig-pkgs width=92%}
+![Вывод состояния Julia-проекта и установленных пакетов](../image/08-terminal.png){#fig-pkgs width=92%}
 
 Структура `labs/lab01` разделяет модель, сценарии, данные, графики, ноутбуки,
 документацию, тесты, отчёт и презентацию. Управляющие команды собраны в
@@ -206,16 +206,16 @@ savefig(trajectory_plot, plotsdir(script_name, "exponential_growth.png"))
 
 Листинг 2 — Основная часть `scripts/01_exponential_growth.jl`
 
-![Фрагмент литературного исходного кода первого эксперимента](image/terminal/05-literate-source.png){#fig-lit width=92%}
+![Фрагмент литературного исходного кода первого эксперимента](../image/05-terminal.png){#fig-lit width=92%}
 
-![Проверка модели в интерактивном сеансе Julia](image/terminal/06-julia-repl.png){#fig-repl width=92%}
+![Проверка модели в интерактивном сеансе Julia](../image/06-terminal.png){#fig-repl width=92%}
 
 После запуска получена 101 точка траектории. В момент $t=10$ численное значение
 равно $20.0854485$, аналитическое — $20.0855369$, абсолютная ошибка —
 $8.84\cdot10^{-5}$, относительная ошибка — приблизительно
 $4.40\cdot10^{-6}$. Теоретическое время удвоения равно $2.31049$.
 
-![Сравнение численного и аналитического решений](image/plots/exponential_growth.png){#fig-single width=82%}
+![Сравнение численного и аналитического решений](../image/01-plot.png){#fig-single width=82%}
 
 ## Параметрическое исследование
 
@@ -283,27 +283,27 @@ end
 
 : Сводные результаты параметрического сканирования {#tbl-param}
 
-![Таблица параметрического эксперимента в терминале](image/terminal/08-parametric-results.png){#fig-param-terminal width=92%}
+![Таблица параметрического эксперимента в терминале](../image/09-terminal.png){#fig-param-terminal width=92%}
 
-![Траектория базового параметрического эксперимента](image/plots/single_experiment.png){#fig-base width=82%}
+![Траектория базового параметрического эксперимента](../image/02-plot.png){#fig-base width=82%}
 
-![Сравнение траекторий для пяти значений коэффициента роста](image/plots/parametric_scan_comparison.png){#fig-scan width=82%}
+![Сравнение траекторий для пяти значений коэффициента роста](../image/03-plot.png){#fig-scan width=82%}
 
 С ростом $\alpha$ итоговое значение меняется на несколько порядков, поэтому
 линии больших $\alpha$ визуально доминируют на общей линейной шкале. Время
 удвоения, напротив, монотонно уменьшается и точно следует обратной зависимости
 (@eq-doubling).
 
-![Теоретическая и экспериментальная зависимости времени удвоения](image/plots/doubling_time_vs_alpha.png){#fig-double width=82%}
+![Теоретическая и экспериментальная зависимости времени удвоения](../image/04-plot.png){#fig-double width=82%}
 
 Бенчмарк показал время одного решения порядка $6$–$8$ мкс. Небольшой разброс
 между значениями $\alpha$ не образует устойчивого тренда: вычислительная
 сложность на выбранном интервале определяется главным образом одинаковыми
 настройками решателя и сохранения.
 
-![Время численного решения для разных значений параметра](image/plots/computation_time_vs_alpha.png){#fig-bench width=82%}
+![Время численного решения для разных значений параметра](../image/05-plot.png){#fig-bench width=82%}
 
-![Созданные файлы данных и графиков](image/terminal/09-result-files.png){#fig-results width=92%}
+![Созданные файлы данных и графиков](../image/10-terminal.png){#fig-results width=92%}
 
 # Производные форматы и ноутбуки
 
@@ -347,35 +347,35 @@ foreach(generate_formats, ARGS)
 
 Листинг 4 — Генератор производных форматов `scripts/tangle.jl`
 
-![Генерация чистого кода, Quarto-документов и ноутбуков](image/terminal/07-generated-formats.png){#fig-generated width=92%}
+![Генерация чистого кода, Quarto-документов и ноутбуков](../image/07-terminal.png){#fig-generated width=92%}
 
 Оба ноутбука выполнены с ядром `julia-lab01-1.11`; результаты сохранены в
 самих `.ipynb`. В первом ноутбуке заполнено 7 ячеек выполнения, во втором — 15.
 
-![Проверка выполненных Jupyter-ноутбуков](image/terminal/10-notebooks-executed.png){#fig-notebooks width=92%}
+![Проверка выполненных Jupyter-ноутбуков](../image/11-terminal.png){#fig-notebooks width=92%}
 
-![Содержимое ноутбука одиночного эксперимента](image/terminal/11-notebook-01-content.png){#fig-nb1-terminal width=92%}
+![Содержимое ноутбука одиночного эксперимента](../image/12-terminal.png){#fig-nb1-terminal width=92%}
 
-![Содержимое ноутбука параметрического эксперимента](image/terminal/12-notebook-02-content.png){#fig-nb2-terminal width=92%}
+![Содержимое ноутбука параметрического эксперимента](../image/13-terminal.png){#fig-nb2-terminal width=92%}
 
-![Запуск JupyterLab и доступность обоих ноутбуков](image/terminal/jupyter-00-launcher.png){#fig-jupyter-start width=92%}
+![Запуск JupyterLab и доступность обоих ноутбуков](../image/01-jupyter.png){#fig-jupyter-start width=92%}
 
-![Открытый ноутбук первого эксперимента](image/terminal/jupyter-01-notebook-open.png){#fig-jupyter-open1 width=92%}
+![Открытый ноутбук первого эксперимента](../image/02-jupyter.png){#fig-jupyter-open1 width=92%}
 
-![Выполнение ячеек первого ноутбука](image/terminal/jupyter-02-notebook-01-running.png){#fig-jupyter-run1 width=92%}
+![Выполнение ячеек первого ноутбука](../image/03-jupyter.png){#fig-jupyter-run1 width=92%}
 
-![Завершённый первый ноутбук с графиком](image/terminal/jupyter-03-notebook-01-complete.png){#fig-jupyter-done1 width=92%}
+![Завершённый первый ноутбук с графиком](../image/04-jupyter.png){#fig-jupyter-done1 width=92%}
 
-![Открытый ноутбук параметрического исследования](image/terminal/jupyter-04-notebook-02-open.png){#fig-jupyter-open2 width=92%}
+![Открытый ноутбук параметрического исследования](../image/05-jupyter.png){#fig-jupyter-open2 width=92%}
 
-![Выполнение параметрического ноутбука](image/terminal/jupyter-05-notebook-02-running.png){#fig-jupyter-run2 width=92%}
+![Выполнение параметрического ноутбука](../image/06-jupyter.png){#fig-jupyter-run2 width=92%}
 
-![Результаты параметрического ноутбука в интерфейсе JupyterLab](image/terminal/jupyter-06-notebook-02-results.png){#fig-jupyter-done2 width=92%}
+![Результаты параметрического ноутбука в интерфейсе JupyterLab](../image/07-jupyter.png){#fig-jupyter-done2 width=92%}
 
 Quarto-документы собраны в автономные HTML-файлы с внедрёнными ресурсами. Они
 дают читаемое представление вычислений без запуска среды разработки.
 
-![Собранные Quarto-документы обоих экспериментов](image/terminal/13-quarto-documents.png){#fig-quarto width=92%}
+![Собранные Quarto-документы обоих экспериментов](../image/14-terminal.png){#fig-quarto width=92%}
 
 # Проверка и управление версиями
 
@@ -383,22 +383,22 @@ Quarto-документы собраны в автономные HTML-файлы
 удвоения и точность численного интегрирования. Полный набор тестов завершился
 без ошибок.
 
-![Успешное выполнение тестов лабораторной работы](image/terminal/14-tests-passed.png){#fig-tests width=92%}
+![Успешное выполнение тестов лабораторной работы](../image/15-terminal.png){#fig-tests width=92%}
 
 История изменений разделена на этапы: подготовка репозитория, реализация
 модели, добавление воспроизводимых результатов и оформление релиза. Локально
 установлен автор `dakuokkonen`; глобальные настройки Git других проектов не
 изменялись.
 
-![Логически разделённая история коммитов](image/terminal/15-git-history.png){#fig-history width=92%}
+![Логически разделённая история коммитов](../image/16-terminal.png){#fig-history width=92%}
 
 Одинаковая ветка отправлена в два независимых удалённых репозитория: GitHub и
 GitVerse. Для каждого сервиса используется отдельный SSH-псевдоним, поэтому
 учётные данные не смешиваются с другими проектами.
 
-![Отправка ветки и тега в GitHub и GitVerse](image/terminal/16-pushed-to-both-remotes.png){#fig-push width=92%}
+![Отправка ветки и тега в GitHub и GitVerse](../image/17-terminal.png){#fig-push width=92%}
 
-![Итоговая проверка состояния проекта](image/terminal/17-finished.png){#fig-finish width=92%}
+![Итоговая проверка состояния проекта](../image/18-terminal.png){#fig-finish width=92%}
 
 # Воспроизводимость
 
