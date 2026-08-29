@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-COURSE = 
+COURSE = simulation-modeling
 
 .PHONY: all clean
 

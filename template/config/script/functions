@@ -130,14 +130,16 @@ function list_courses() {
 
 ## Edit package.json
 function edit_package_json() {
+	local sed_args=(-i.bak)
 	# Replace version
-	sed -i "s/\"version\": \".*\"/\"version\": \"1.0.0\"/" package.json
+	sed "${sed_args[@]}" "s/\"version\": \".*\"/\"version\": \"1.0.0\"/" package.json
 	# Replace name and email
-	sed -i "s/\"author\": \".*\"/\"author\": \"$(git config --get user.name) <$(git config --get user.email)>\"/" package.json
+	sed "${sed_args[@]}" "s/\"author\": \".*\"/\"author\": \"$(git config --get user.name) <$(git config --get user.email)>\"/" package.json
 	# Replace repository
-	sed -i "s|\"repository\": \".*\"|\"repository\": \"$(git remote get-url origin)\"|" package.json
+	sed "${sed_args[@]}" "s|\"repository\": \".*\"|\"repository\": \"$(git remote get-url origin)\"|" package.json
 	# Replace description
-	sed -i "s|\"description\": \".*\"|\"description\": \"$(cat template/config/course/$(cat COURSE) | grep DESCR | cut -d: -f2 | xargs)\"|" package.json
+	sed "${sed_args[@]}" "s|\"description\": \".*\"|\"description\": \"$(cat template/config/course/$(cat COURSE) | grep DESCR | cut -d: -f2 | xargs)\"|" package.json
 	# Replace name
-	sed -i "s|\"name\": \".*\"|\"name\": \"$(cat COURSE)\"|" package.json
+	sed "${sed_args[@]}" "s|\"name\": \".*\"|\"name\": \"$(cat COURSE)\"|" package.json
+	rm -f package.json.bak
 }
