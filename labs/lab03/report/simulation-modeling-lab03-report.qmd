@@ -7,6 +7,7 @@ author:
       - name: Российский университет дружбы народов имени Патриса Лумумбы
         city: Москва
         country: Российская Федерация
+        address: ул. Миклухо-Маклая, д. 6
       - name: Учебная группа НФИбд-01-23
 date: 2026-08-30
 lang: ru-RU
@@ -17,21 +18,20 @@ abstract: |
   ожидания сопоставлены со стационарными формулами. Проведён нагрузочный
   эксперимент, показавший нелинейный рост задержки при приближении загрузки к
   единице. Результаты воспроизводятся в Julia и проверяются тестами.
-format:
-  docx:
-    reference-doc: ../../lab01/report/simulation-modeling-lab01-report.docx
-    toc: false
 ---
 
 # Содержание {.unnumbered}
 
 1. Цель и задание
 2. Теоретическое введение
-3. Алгоритм имитации
-4. Базовый эксперимент
-5. Нагрузочный эксперимент
-6. Воспроизводимость и проверка
-7. Выводы
+3. Среда и организация проекта
+4. Алгоритм имитации
+5. Базовый эксперимент
+6. Нагрузочный эксперимент
+7. Производные форматы и Jupyter
+8. Проверка и управление версиями
+9. Выводы
+10. Источники
 
 {{< pagebreak >}}
 
@@ -49,6 +49,8 @@ format:
 4. изучить изменение очереди при росте нагрузки;
 5. сформировать CSV, графики, QMD, HTML и выполненные блокноты Jupyter;
 6. подтвердить корректность реализации автоматическими тестами.
+
+![Проверка пользователя, версии Julia и рабочего каталога](../image/01-terminal.png){#fig-lab03-env width=92%}
 
 # Теоретическое введение
 
@@ -79,6 +81,48 @@ $\rho\to1$. Это свойство особенно важно при прое�
 телекоммуникационных систем: небольшое увеличение потока вблизи пропускной
 способности вызывает резкий рост задержки.
 
+Аналитические характеристики вычисляются отдельной функцией общего модуля.
+Перед расчётом проверяется условие стационарности, поэтому нестабильная
+конфигурация не может быть ошибочно использована как контрольный пример.
+
+```julia
+function theoretical_mm1(lambda::Real, mu::Real)
+    lambda > 0 || throw(ArgumentError("lambda must be positive"))
+    mu > lambda || throw(ArgumentError(
+        "stationary M/M/1 requires mu > lambda"
+    ))
+    rho = lambda / mu
+    return (
+        rho=rho,
+        mean_system=rho / (1 - rho),
+        mean_queue=rho^2 / (1 - rho),
+        mean_wait=rho / (mu - lambda),
+        mean_sojourn=1 / (mu - lambda),
+    )
+end
+```
+
+Листинг 1 — Аналитические характеристики из `src/queueing_models.jl`
+
+# Среда и организация проекта
+
+Работа выполнена в Julia 1.11.9. Зависимости закреплены файлами
+`Project.toml` и `Manifest.toml`. В общем модуле находится математическая
+и событийная логика, два сценария отвечают за базовый и нагрузочный
+эксперименты, а тесты обращаются непосредственно к тому же модулю.
+
+| Компонент | Назначение |
+|---|---|
+| `src/queueing_models.jl` | аналитические формулы и событийная модель |
+| `scripts/01_mm1_queue.jl` | базовый эксперимент и сравнение с теорией |
+| `scripts/02_load_scan.jl` | серия прогонов для семи уровней нагрузки |
+| `scripts/tangle.jl` | генерация Julia, QMD и IPYNB |
+| `test/runtests.jl` | проверки формул, ограничений и статистик |
+
+: Структура вычислительной части лабораторной работы {#tbl-lab03-files}
+
+![Состав Julia-проекта и закреплённые зависимости](../image/02-terminal.png){#fig-lab03-tree width=92%}
+
 # Алгоритм имитации
 
 Модель хранит времена ближайшего поступления и ухода. На каждом шаге
@@ -103,7 +147,7 @@ while true
 end
 ```
 
-Листинг 1 — Основной цикл событийной модели
+Листинг 2 — Основной цикл событийной модели в `src/queueing_models.jl`
 
 Интервалы формируются как `randexp(rng) / rate`. Начальные числа генератора
 фиксируются, что обеспечивает повторяемость. Время ожидания каждой обслуженной
@@ -119,6 +163,36 @@ $$
 
 поэтому $\rho=0{,}9091$. За один прогон поступило и было обслужено 29 825
 заявок; потерь при практически неограниченном буфере не возникло.
+
+Базовый сценарий формирует единую таблицу теоретических и имитационных
+значений, после чего рассчитывает относительную ошибку каждой характеристики.
+
+```julia
+lambda, mu = 30.0, 33.0
+result = simulate_mm1(
+    lambda, mu;
+    horizon=1000.0,
+    capacity=10_000,
+    seed=202603,
+)
+theory = theoretical_mm1(lambda, mu)
+
+summary = DataFrame(
+    metric=["rho", "L", "Lq", "W", "Wq"],
+    theory=[
+        theory.rho, theory.mean_system, theory.mean_queue,
+        theory.mean_sojourn, theory.mean_wait,
+    ],
+    simulation=[
+        result.utilization, result.mean_system, result.mean_queue,
+        result.mean_sojourn, result.mean_wait,
+    ],
+)
+summary.relative_error =
+    abs.((summary.simulation .- summary.theory) ./ summary.theory)
+```
+
+Листинг 3 — Базовый расчёт в `scripts/01_mm1_queue.jl`
 
 | Показатель | Теория | Имитация | Относительная ошибка |
 |---|---:|---:|---:|
@@ -152,6 +226,33 @@ $$
 изменялась от 10 до 32,5. Для каждой точки выполнено 30 независимых прогонов
 продолжительностью 1500 единиц модельного времени.
 
+```julia
+mu = 33.0
+lambdas = [10.0, 20.0, 25.0, 28.0, 30.0, 31.5, 32.5]
+rows = NamedTuple[]
+
+for (i, lambda) in enumerate(lambdas)
+    runs = [
+        simulate_mm1(
+            lambda, mu;
+            horizon=1500.0,
+            seed=202603 + 100i + r,
+        )
+        for r in 1:30
+    ]
+    theory = theoretical_mm1(lambda, mu)
+    push!(rows, (
+        lambda=lambda,
+        rho=theory.rho,
+        theory_Lq=theory.mean_queue,
+        simulation_Lq=mean(getfield.(runs, :mean_queue)),
+        simulation_Wq=mean(getfield.(runs, :mean_wait)),
+    ))
+end
+```
+
+Листинг 4 — Нагрузочный эксперимент в `scripts/02_load_scan.jl`
+
 | $\lambda$ | $\rho$ | Теоретическое $L_q$ | Имитационное $L_q$ | Имитационное $W_q$ |
 |---:|---:|---:|---:|---:|
 | 10,0 | 0,3030 | 0,1318 | 0,1314 | 0,0132 |
@@ -172,20 +273,63 @@ $\rho=0{,}7576$ она близка к 2,35. Следовательно, рез�
 
 ![Среднее ожидание при изменении загрузки](../image/05-plot.png){#fig-wait-load width=88%}
 
-# Воспроизводимость и проверка
+# Производные форматы и Jupyter
 
-Проект организован по схеме DrWatson. `Project.toml` и `Manifest.toml`
-закрепляют среду Julia 1.11. Литературные сценарии автоматически порождают
-чистые Julia-файлы, QMD и IPYNB; выполненные блокноты содержат фактический вывод.
+Сценарий `scripts/tangle.jl` использует `Literate.jl` и для каждого
+литературного исходника формирует чистый Julia-файл, Quarto-документ и
+Jupyter-ноутбук. Полученные IPYNB выполняются с ядром Julia лабораторной
+работы, поэтому в них сохраняются реальные таблицы и текстовый вывод.
 
-```bash
-julia --project=. -e 'using Pkg; Pkg.instantiate()'
-make all
+```julia
+function generate_formats(source::AbstractString)
+    name = splitext(basename(source))[1]
+    foreach(mkpath, (
+        scriptsdir(name),
+        projectdir("markdown", name),
+        projectdir("notebooks", name),
+    ))
+    Literate.script(source, scriptsdir(name); name, credit=false)
+    Literate.notebook(
+        source, projectdir("notebooks", name);
+        name, execute=false, credit=false,
+    )
+    Literate.markdown(
+        source, projectdir("markdown", name);
+        name, flavor=Literate.QuartoFlavor(), credit=false,
+    )
+end
 ```
+
+Листинг 5 — Генерация производных форматов в `scripts/tangle.jl`
+
+![Выполненный блокнот базового эксперимента M/M/1](../image/01-jupyter.png){#fig-lab03-jupyter-base width=92%}
+
+![Выполненный блокнот нагрузочного эксперимента](../image/02-jupyter.png){#fig-lab03-jupyter-load width=92%}
+
+# Проверка и управление версиями
 
 Тесты проверяют известный случай $\lambda=3$, $\mu=5$, неотрицательность
 очереди и ожиданий, отсутствие потерь при неограниченном буфере, а также
-близость загрузки и $L$ к аналитическим значениям. Пройдено 11 проверок.
+близость загрузки и $L$ к аналитическим значениям.
+
+```julia
+@testset "M/M/1 simulation" begin
+    r = simulate_mm1(3.0, 5.0; horizon=20_000.0, seed=42)
+    @test r.arrivals >= r.served
+    @test r.lost == 0
+    @test abs(r.utilization - 0.6) < 0.03
+    @test abs(r.mean_system - 1.5) < 0.15
+    @test all(>=(0), r.queue_lengths)
+    @test all(>=(0), r.waits)
+end
+```
+
+Листинг 6 — Статистические проверки в `test/runtests.jl`
+
+Все 11 проверок пройдены. Отдельно выполнены `git diff --check` и проверка
+чистоты рабочего дерева.
+
+![Результат выполнения автоматических проверок](../image/03-terminal.png){#fig-lab03-tests width=92%}
 
 # Выводы
 
@@ -195,3 +339,11 @@ $\rho=0{,}9091$ имитационные характеристики согла
 подтвердил резкий рост очереди и ожидания при приближении $\lambda$ к $\mu$.
 Получен полностью воспроизводимый Julia-проект с таблицами, графиками,
 документацией, блокнотами и тестами.
+
+# Источники
+
+1. Gross D., Shortle J. F., Thompson J. M., Harris C. M. *Fundamentals of
+   Queueing Theory*. Wiley, 2018.
+2. Julia Documentation. <https://docs.julialang.org/>
+3. Literate.jl Documentation. <https://fredrikekre.github.io/Literate.jl/>
+4. Quarto Documentation. <https://quarto.org/docs/>

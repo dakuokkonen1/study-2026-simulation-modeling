@@ -1,5 +1,7 @@
 project:
   title: "Лабораторная работа № 3"
+  output-dir: "_output"
+
 lang: ru-RU
 format:
   revealjs:
@@ -9,11 +11,11 @@ format:
     background-transition: none
     width: 1280
     height: 720
-    margin: 0.17
+    margin: 0.2
     center: true
     controls: true
     progress: true
     smaller: true
     theme: simple
-    logo: ../../lab02/image/logo-rudn.png
-    css: ../../lab02/presentation/styles.css
+    logo: ../image/logo-rudn.png
+    css: styles.css
