@@ -7,6 +7,7 @@ author:
       - name: Российский университет дружбы народов имени Патриса Лумумбы
         city: Москва
         country: Российская Федерация
+        address: ул. Миклухо-Маклая, д. 6
       - name: Учебная группа НФИбд-01-23
 date: 2026-08-30
 lang: ru-RU
@@ -17,21 +18,20 @@ abstract: |
   перегрузки, мгновенная и сглаженная длины очереди, вероятность раннего сброса
   и пропускная способность. Проведён параметрический эксперимент по числу
   потоков; реализация проверена автоматическими тестами.
-format:
-  docx:
-    reference-doc: ../../lab01/report/simulation-modeling-lab01-report.docx
-    toc: false
 ---
 
 # Содержание {.unnumbered}
 
 1. Цель и задание
 2. Механизмы TCP/Reno и RED
-3. Структура модели
-4. Базовый эксперимент
-5. Исследование числа потоков
-6. Воспроизводимость и проверка
-7. Выводы
+3. Среда и организация проекта
+4. Структура модели
+5. Базовый эксперимент
+6. Исследование числа потоков
+7. Производные форматы и Jupyter
+8. Проверка и управление версиями
+9. Выводы
+10. Источники
 
 {{< pagebreak >}}
 
@@ -49,6 +49,8 @@ TCP/Reno и активного управления очередью RED в мн
 4. построены графики окна, очереди, вероятности сброса и throughput;
 5. исследовано влияние количества конкурирующих потоков;
 6. подготовлены данные, блокноты, документация и тесты.
+
+![Проверка пользователя, версии Julia и рабочего каталога](../image/01-terminal.png){#fig-lab04-env width=92%}
 
 # Механизмы TCP/Reno и RED
 
@@ -80,6 +82,38 @@ $$ {#eq-red}
 
 За счёт (@eq-ewma) алгоритм не реагирует на единичные всплески, но начинает
 сигнализировать о перегрузке до заполнения физического буфера.
+
+Кусочно-линейная функция вероятности вынесена в общий модуль и непосредственно
+проверяется модульными тестами.
+
+```julia
+function red_probability(qavg::Real, red::REDParameters)
+    qavg < red.qmin && return 0.0
+    qavg >= red.qmax && return red.pmax
+    return red.pmax *
+        (qavg - red.qmin) / (red.qmax - red.qmin)
+end
+```
+
+Листинг 1 — Вероятность раннего сброса в `src/tcp_red.jl`
+
+# Среда и организация проекта
+
+Расчёты выполнены в Julia 1.11.9. Параметры сети, параметры RED, тип результата
+и имитационный цикл собраны в `src/tcp_red.jl`. Базовый сценарий сохраняет
+траекторию и сводку, а второй сценарий выполняет эксперимент по числу потоков.
+
+| Компонент | Назначение |
+|---|---|
+| `src/tcp_red.jl` | структуры параметров и имитация TCP/Reno с RED |
+| `scripts/01_tcp_red.jl` | базовый эксперимент для 25 потоков |
+| `scripts/02_flow_scan.jl` | исследование конфигураций от 5 до 40 потоков |
+| `scripts/tangle.jl` | генерация Julia, QMD и IPYNB |
+| `test/runtests.jl` | проверки функции RED и ограничений модели |
+
+: Структура вычислительной части лабораторной работы {#tbl-lab04-files}
+
+![Состав Julia-проекта и закреплённые зависимости](../image/02-terminal.png){#fig-lab04-tree width=92%}
 
 # Структура модели
 
@@ -119,11 +153,42 @@ else
 end
 ```
 
-Листинг 1 — Обновление окна одного TCP-потока
+Листинг 2 — Обновление окна одного TCP-потока в `src/tcp_red.jl`
 
 # Базовый эксперимент
 
 После переходного процесса средние показатели составили:
+
+```julia
+network = NetworkParameters(
+    flows=25,
+    capacity_bps=20e6,
+    packet_bytes=500,
+    propagation_rtt=0.118,
+    duration=30.0,
+    dt=0.002,
+)
+red = REDParameters(
+    qmin=75.0,
+    qmax=150.0,
+    weight=0.002,
+    pmax=0.1,
+    limit=300.0,
+)
+result = simulate_tcp_red(; network, red, seed=202604)
+
+trajectory = DataFrame(
+    time=result.time,
+    cwnd_first=result.cwnd_first,
+    cwnd_mean=result.cwnd_mean,
+    queue=result.queue,
+    average_queue=result.average_queue,
+    drop_probability=result.drop_probability,
+    throughput_mbps=result.throughput_mbps,
+)
+```
+
+Листинг 3 — Базовый сценарий в `scripts/01_tcp_red.jl`
 
 | Показатель | Значение |
 |---|---:|
@@ -159,6 +224,32 @@ end
 Число соединений изменялось от 5 до 40. Для каждого варианта использовалось
 отдельное фиксированное начальное число генератора.
 
+```julia
+rows = NamedTuple[]
+for flows in [5, 10, 15, 20, 25, 30, 40]
+    net = NetworkParameters(
+        flows=flows,
+        duration=30.0,
+        dt=0.002,
+    )
+    result = simulate_tcp_red(
+        network=net,
+        red=REDParameters(),
+        seed=202604 + flows,
+    )
+    warm = result.time .>= 10.0
+    push!(rows, (
+        flows=flows,
+        throughput_mbps=mean(result.throughput_mbps[warm]),
+        mean_queue=mean(result.queue[warm]),
+        mean_cwnd=mean(result.cwnd_mean[warm]),
+        loss_events=result.losses,
+    ))
+end
+```
+
+Листинг 4 — Эксперимент по числу потоков в `scripts/02_flow_scan.jl`
+
 | Потоки | Throughput, Мбит/с | Средняя очередь | Среднее окно | Потери |
 |---:|---:|---:|---:|---:|
 | 5 | 19,7009 | 38,3260 | 124,0190 | 10 |
@@ -178,16 +269,66 @@ end
 
 ![Средняя очередь при разном числе потоков](../image/06-plot.png){#fig-flow-queue width=88%}
 
-# Воспроизводимость и проверка
+# Производные форматы и Jupyter
 
-Проект закреплён файлами `Project.toml` и `Manifest.toml`. Литературные
-сценарии порождают Julia, QMD и IPYNB; CSV и PNG пересоздаются командой
-`make all`.
+Литературные исходники преобразуются в чистые Julia-файлы, QMD и IPYNB одним
+генератором. Блокноты выполняются с ядром Julia лабораторной работы и сохраняют
+фактические сводки базового и параметрического экспериментов.
+
+```julia
+function generate_formats(source::AbstractString)
+    name = splitext(basename(source))[1]
+    foreach(mkpath, (
+        scriptsdir(name),
+        projectdir("markdown", name),
+        projectdir("notebooks", name),
+    ))
+    Literate.script(source, scriptsdir(name); name, credit=false)
+    Literate.notebook(
+        source, projectdir("notebooks", name);
+        name, execute=false, credit=false,
+    )
+    Literate.markdown(
+        source, projectdir("markdown", name);
+        name, flavor=Literate.QuartoFlavor(), credit=false,
+    )
+end
+```
+
+Листинг 5 — Генерация производных форматов в `scripts/tangle.jl`
+
+![Выполненный блокнот базового эксперимента TCP/Reno и RED](../image/01-jupyter.png){#fig-lab04-jupyter-base width=92%}
+
+![Выполненный блокнот эксперимента по числу потоков](../image/02-jupyter.png){#fig-lab04-jupyter-scan width=92%}
+
+# Проверка и управление версиями
 
 Тесты проверяют кусочно-линейную функцию RED, границы очереди и вероятности,
 минимальное окно TCP, ограничение throughput физической ёмкостью, наличие
-доставленных пакетов и появление потерь в нагруженном режиме. Пройдено 10
-проверок.
+доставленных пакетов и появление потерь в нагруженном режиме.
+
+```julia
+@testset "TCP/RED simulation" begin
+    net = NetworkParameters(flows=25, duration=12.0, dt=0.002)
+    red = REDParameters()
+    r = simulate_tcp_red(network=net, red=red, seed=42)
+    @test length(r.time) == length(r.queue)
+    @test all(0 .<= r.queue .<= red.limit)
+    @test all(r.cwnd_first .>= 1.0)
+    @test all(0 .<= r.drop_probability .<= red.pmax)
+    @test maximum(r.throughput_mbps) <=
+        net.capacity_bps / 1e6 + 1e-9
+    @test r.delivered_packets > 0
+    @test r.losses > 0
+end
+```
+
+Листинг 6 — Проверки имитационной модели в `test/runtests.jl`
+
+Все 10 проверок пройдены. Дополнительно выполнены `git diff --check` и
+контроль состава отслеживаемых файлов.
+
+![Результат выполнения автоматических проверок](../image/03-terminal.png){#fig-lab04-tests width=92%}
 
 # Выводы
 
@@ -197,3 +338,11 @@ end
 Параметрический эксперимент показал уменьшение индивидуального окна и рост
 числа сигналов перегрузки при увеличении конкуренции, при этом RED предотвращает
 неограниченное накопление пакетов.
+
+# Источники
+
+1. Floyd S., Jacobson V. Random Early Detection Gateways for Congestion
+   Avoidance. *IEEE/ACM Transactions on Networking*, 1993.
+2. Stevens W. R. *TCP/IP Illustrated, Volume 1*. Addison-Wesley, 1994.
+3. Julia Documentation. <https://docs.julialang.org/>
+4. Quarto Documentation. <https://quarto.org/docs/>

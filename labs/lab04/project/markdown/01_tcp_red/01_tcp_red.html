@@ -2286,7 +2286,30 @@ vertical-align: -.125em;
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p4, <span class="fu">plotsdir</span>(name, <span class="st">&quot;throughput.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
-<pre>=== TCP/Reno + RED: базовый эксперимент ===
+<pre><span class="ansi-bright-green-fg ansi-bold">Precompiling</span> DrWatson...
+    255.8 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">ScopedValues</span>
+   1775.6 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">FileIO</span>
+  12948.1 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">JLD2</span>
+    804.9 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">JLD2 → UnPackExt</span>
+    918.0 ms<span class="ansi-green-fg">  ✓ </span>DrWatson
+  5 dependencies successfully precompiled in 17 seconds. 37 already precompiled.
+<span class="ansi-bright-green-fg ansi-bold">Precompiling</span> DataFrames...
+  15252.3 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">PrettyTables</span>
+  21766.1 ms<span class="ansi-green-fg">  ✓ </span>DataFrames
+  2 dependencies successfully precompiled in 37 seconds. 33 already precompiled.
+<span class="ansi-bright-green-fg ansi-bold">Precompiling</span> Plots...
+    558.2 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">JLFzf</span>
+    793.5 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">UnicodeFun</span>
+   1537.6 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">Latexify</span>
+    379.7 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">Latexify → SparseArraysExt</span>
+   2020.6 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">GR</span>
+  29443.6 ms<span class="ansi-green-fg">  ✓ </span>Plots
+  6 dependencies successfully precompiled in 32 seconds. 161 already precompiled.
+<span class="ansi-bright-green-fg ansi-bold">Precompiling</span> FileIOExt...
+   1923.5 ms<span class="ansi-green-fg">  ✓ </span><span class="ansi-bright-black-fg">Test</span>
+   1875.7 ms<span class="ansi-green-fg">  ✓ </span>Plots → FileIOExt
+  2 dependencies successfully precompiled in 5 seconds. 167 already precompiled.
+=== TCP/Reno + RED: базовый эксперимент ===
 Потоков: 25, узкое место: 20.0 Мбит/с
 <span class="ansi-bold">5×2 DataFrame</span>
 <span class="ansi-bold"> Row </span>│<span class="ansi-bold"> metric               </span><span class="ansi-bold"> value    </span>
