@@ -1,5 +1,6 @@
 project:
   title: "Лабораторная работа № 2"
+  output-dir: "_output"
 
 lang: ru-RU
 format:
@@ -10,7 +11,7 @@ format:
     background-transition: none
     width: 1280
     height: 720
-    margin: 0.17
+    margin: 0.2
     center: true
     controls: true
     progress: true

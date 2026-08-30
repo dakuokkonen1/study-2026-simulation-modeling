@@ -1,0 +1,27 @@
+project:
+  title: "Лабораторная работа № 2"
+  output-dir: "_output"
+
+standalone: true
+lang: ru-RU
+number-sections: true
+toc: true
+toc-title: "Содержание"
+toc-depth: 2
+crossref:
+  lof-title: "Список иллюстраций"
+  lot-title: "Список таблиц"
+  fig-title: "Рисунок"
+  tbl-title: "Таблица"
+format:
+  html:
+    embed-resources: true
+    theme: cosmo
+    code-fold: true
+    smooth-scroll: true
+  docx:
+    toc: false
+    number-sections: true
+    toc-depth: 2
+    fig-width: 6.5
+    fig-height: 3.7

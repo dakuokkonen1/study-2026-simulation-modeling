@@ -20,18 +20,6 @@ abstract: |
   и проконтролировано сохранение первого интеграла. Расчёты выполнены в Julia,
   результаты представлены таблицами, графиками и выполненными блокнотами
   Jupyter; корректность реализации подтверждена автоматическими тестами.
-format:
-  docx:
-    reference-doc: ../../lab01/report/simulation-modeling-lab01-report.docx
-    toc: false
-  pdf:
-    documentclass: scrreprt
-    papersize: a4
-    fontsize: 12pt
-    linestretch: 1.35
-    toc: false
-    number-sections: true
-    pdf-engine: xelatex
 ---
 
 # Содержание {.unnumbered}
