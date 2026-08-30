@@ -1,0 +1,9 @@
+/.julia/
+/.jupyter/
+/.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+/.quarto/
+**/.quarto/
+**/_output/
+*.jl.cov
+*.jl.mem
