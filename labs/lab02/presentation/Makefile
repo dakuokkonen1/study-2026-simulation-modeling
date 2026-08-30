@@ -1,6 +1,7 @@
 OUTPUT := _output
 SOURCE := simulation-modeling-lab02-presentation.qmd
-FINAL := simulation-modeling-lab02-presentation.html
+FINAL_HTML := simulation-modeling-lab02-presentation.html
+FINAL_PPTX := simulation-modeling-lab02-presentation.pptx
 
 .PHONY: all html verify clean
 
@@ -8,10 +9,11 @@ all: html verify
 
 html:
 	quarto render $(SOURCE) --to revealjs
-	cp $(OUTPUT)/$(FINAL) $(FINAL)
+	cp $(OUTPUT)/$(FINAL_HTML) $(FINAL_HTML)
 
 verify:
-	@test -s $(FINAL)
+	@test -s $(FINAL_HTML)
+	@test -s $(FINAL_PPTX)
 
 clean:
 	rm -rf $(OUTPUT) .quarto

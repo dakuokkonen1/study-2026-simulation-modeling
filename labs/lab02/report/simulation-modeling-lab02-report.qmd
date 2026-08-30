@@ -31,8 +31,9 @@ abstract: |
 5. Исследование модели Лотки–Вольтерры
 6. Производные форматы и Jupyter
 7. Тестирование и контроль результатов
-8. Выводы
-9. Источники
+8. Воспроизводимость
+9. Выводы
+10. Источники
 
 {{< pagebreak >}}
 
@@ -172,6 +173,11 @@ $R_e(t)$, равновесия и первого интеграла. Благо�
 используют одну реализацию математических формул.
 
 ```julia
+module EpidemicEcology
+
+export sir!, lotka_volterra!, basic_reproduction_number,
+       effective_reproduction_number, lotka_equilibrium, lotka_invariant
+
 function sir!(du, u, p, t)
     susceptible, infected, recovered = u
     beta, contacts, gamma = p
@@ -183,6 +189,12 @@ function sir!(du, u, p, t)
     return nothing
 end
 
+basic_reproduction_number(beta, contacts, gamma) =
+    beta * contacts / gamma
+
+effective_reproduction_number(susceptible, population, reproduction_number) =
+    reproduction_number * susceptible / population
+
 function lotka_volterra!(du, u, p, t)
     prey, predator = u
     alpha, beta, delta, gamma = p
@@ -190,9 +202,19 @@ function lotka_volterra!(du, u, p, t)
     du[2] = delta * prey * predator - gamma * predator
     return nothing
 end
+
+lotka_equilibrium(alpha, beta, delta, gamma) =
+    (gamma / delta, alpha / beta)
+
+function lotka_invariant(prey, predator, alpha, beta, delta, gamma)
+    return delta * prey - gamma * log(prey) +
+           beta * predator - alpha * log(predator)
+end
+
+end
 ```
 
-Листинг 1 — Правые части систем из `src/epidemic_ecology.jl`
+Листинг 1 — Полный модуль моделей `src/epidemic_ecology.jl`
 
 ![Фрагмент общего модуля двух моделей](../image/04-terminal.png){#fig-module width=94%}
 
@@ -241,9 +263,31 @@ trajectory = DataFrame(
     infected=getindex.(solution.u, 2),
     recovered=getindex.(solution.u, 3),
 )
+trajectory.population = trajectory.susceptible .+
+    trajectory.infected .+ trajectory.recovered
+
+reproduction_number = basic_reproduction_number(
+    p.beta, p.contacts, p.gamma
+)
+trajectory.effective_reproduction = effective_reproduction_number.(
+    trajectory.susceptible,
+    trajectory.population,
+    reproduction_number,
+)
+
+peak_index = argmax(trajectory.infected)
+peak_time = trajectory.time[peak_index]
+peak_infected = trajectory.infected[peak_index]
+cross_index = findfirst(<(1.0), trajectory.effective_reproduction)
+threshold_time = isnothing(cross_index) ? NaN : trajectory.time[cross_index]
+population_drift = maximum(
+    abs.(trajectory.population .- first(trajectory.population))
+)
+
+CSV.write(datadir(script_name, "trajectory.csv"), trajectory)
 ```
 
-Листинг 2 — Постановка и решение базовой задачи в `scripts/01_sir.jl`
+Листинг 2 — Базовый расчёт и диагностика SIR в `scripts/01_sir.jl`
 
 Результаты базового расчёта приведены в @tbl-sir-base.
 
@@ -301,6 +345,45 @@ $\{3;5;7{,}5;10;15\}$. Остальные параметры и начальны
 создаёт выраженного роста из-за того, что начальная доля восприимчивых меньше
 единицы. При увеличении числа контактов пик становится выше и возникает раньше.
 
+Параметрический эксперимент выполняется циклом по пяти значениям $c$. Для
+каждого случая используется исходная задача `problem`, в которой заменяется
+только кортеж параметров; это исключает расхождение настроек решателя между
+вариантами.
+
+```julia
+contact_values = [3.0, 5.0, 7.5, 10.0, 15.0]
+summary_rows = NamedTuple[]
+
+for contacts in contact_values
+    local_parameters = (p.beta, contacts, p.gamma)
+    local_problem = remake(problem; p=local_parameters)
+    local_solution = solve(
+        local_problem,
+        Tsit5();
+        saveat=saveat,
+        reltol=1e-9,
+        abstol=1e-11,
+    )
+    local_infected = getindex.(local_solution.u, 2)
+    local_peak_index = argmax(local_infected)
+    local_r0 = basic_reproduction_number(
+        p.beta, contacts, p.gamma
+    )
+    push!(summary_rows, (
+        contacts=contacts,
+        reproduction_number=local_r0,
+        peak_infected=local_infected[local_peak_index],
+        peak_time=local_solution.t[local_peak_index],
+        final_recovered=getindex(last(local_solution.u), 3),
+    ))
+end
+
+scan_summary = DataFrame(summary_rows)
+CSV.write(datadir(script_name, "contact_scan.csv"), scan_summary)
+```
+
+Листинг 3 — Сканирование числа контактов в `scripts/01_sir.jl`
+
 ![Сравнение кривых I(t) при разных значениях числа контактов](../image/05-plot.png){#fig-sir-scan width=86%}
 
 # Исследование модели Лотки–Вольтерры
@@ -340,7 +423,7 @@ solution = solve(
 )
 ```
 
-Листинг 3 — Решение базовой системы в `scripts/02_lotka_volterra.jl`
+Листинг 4 — Решение базовой системы в `scripts/02_lotka_volterra.jl`
 
 Численные характеристики собраны в @tbl-lv-base.
 
@@ -384,12 +467,25 @@ trajectory.invariant = lotka_invariant.(
     p.gamma,
 )
 
+equilibrium_prey, equilibrium_predator = lotka_equilibrium(
+    p.alpha, p.beta, p.delta, p.gamma
+)
+
+prey_peak_indices = [
+    index for index in 2:(nrow(trajectory) - 1)
+    if trajectory.prey[index] > trajectory.prey[index - 1] &&
+       trajectory.prey[index] >= trajectory.prey[index + 1]
+]
+period_estimate = length(prey_peak_indices) > 1 ?
+    sum(diff(trajectory.time[prey_peak_indices])) /
+    (length(prey_peak_indices) - 1) : NaN
+
 invariant_drift = maximum(
     abs.(trajectory.invariant .- first(trajectory.invariant))
 )
 ```
 
-Листинг 4 — Контроль первого интеграла в `scripts/02_lotka_volterra.jl`
+Листинг 5 — Равновесие, период и первый интеграл в `scripts/02_lotka_volterra.jl`
 
 Максимальное отклонение порядка $10^{-11}$ существенно меньше масштаба
 самой функции $H(x,y)$. Следовательно, выбранные допуски решателя обеспечивают
@@ -402,6 +498,55 @@ invariant_drift = maximum(
 Дополнительно исследованы четыре начальных состояния. Параметры модели были
 одинаковыми, поэтому все орбиты окружают одну и ту же точку равновесия, но имеют
 разные амплитуды.
+
+```julia
+initial_conditions = [
+    [20.0, 4.0],
+    [30.0, 12.0],
+    [40.0, 9.0],
+    [55.0, 6.0],
+]
+summary_rows = NamedTuple[]
+
+for initial_state in initial_conditions
+    local_solution = solve(
+        remake(problem; u0=initial_state),
+        Tsit5();
+        saveat=saveat,
+        reltol=1e-10,
+        abstol=1e-12,
+    )
+    local_prey = getindex.(local_solution.u, 1)
+    local_predator = getindex.(local_solution.u, 2)
+    local_invariant = lotka_invariant.(
+        local_prey,
+        local_predator,
+        p.alpha,
+        p.beta,
+        p.delta,
+        p.gamma,
+    )
+    push!(summary_rows, (
+        prey0=initial_state[1],
+        predator0=initial_state[2],
+        prey_min=minimum(local_prey),
+        prey_max=maximum(local_prey),
+        predator_min=minimum(local_predator),
+        predator_max=maximum(local_predator),
+        invariant_drift=maximum(
+            abs.(local_invariant .- first(local_invariant))
+        ),
+    ))
+end
+
+initial_summary = DataFrame(summary_rows)
+CSV.write(
+    datadir(script_name, "initial_conditions.csv"),
+    initial_summary,
+)
+```
+
+Листинг 6 — Семейство начальных условий в `scripts/02_lotka_volterra.jl`
 
 | $x_0$ | $y_0$ | $x_{min}$ | $x_{max}$ | $y_{min}$ | $y_{max}$ |
 |---:|---:|---:|---:|---:|---:|
@@ -420,6 +565,36 @@ invariant_drift = maximum(
 представления: исполняемый `.jl`, документ `.qmd` и блокнот `.ipynb`. Команда
 `make notebooks` выполнила оба блокнота с ядром Julia; номера выполнения и
 текстовые результаты сохранены внутри файлов.
+
+```julia
+using DrWatson
+@quickactivate "project"
+using Literate
+
+function generate_formats(source::AbstractString)
+    isfile(source) || error("Source file not found: $(source)")
+    name = splitext(basename(source))[1]
+    clean_dir = scriptsdir(name)
+    quarto_dir = projectdir("markdown", name)
+    notebook_dir = projectdir("notebooks", name)
+    foreach(mkpath, (clean_dir, quarto_dir, notebook_dir))
+    Literate.script(source, clean_dir; name=name, credit=false)
+    Literate.notebook(
+        source, notebook_dir; name=name, execute=false, credit=false
+    )
+    Literate.markdown(
+        source,
+        quarto_dir;
+        name=name,
+        flavor=Literate.QuartoFlavor(),
+        credit=false,
+    )
+end
+
+foreach(generate_formats, ARGS)
+```
+
+Листинг 7 — Генератор Julia, QMD и IPYNB `scripts/tangle.jl`
 
 ![Структура рассчитанных данных, графиков, QMD и IPYNB](../image/08-terminal.png){#fig-files width=94%}
 
@@ -449,15 +624,56 @@ JupyterLab распознаёт специальное ядро лаборато
 - первый интеграл сохраняется с точностью лучше $10^{-7}$.
 
 ```julia
-@test maximum(abs.(totals .- first(totals))) < 1e-7
-@test minimum(minimum.(solution.u)) >= -1e-8
+@testset "SIR model" begin
+    du = zeros(3)
+    state = [990.0, 10.0, 0.0]
+    sir!(du, state, (0.05, 10.0, 0.25), 0.0)
+    @test sum(du) ≈ 0.0 atol=1e-12
+    @test basic_reproduction_number(0.05, 10.0, 0.25) ≈ 2.0
+    @test effective_reproduction_number(500.0, 1000.0, 2.0) ≈ 1.0
 
-@test collect(equilibrium) ≈ [30.0, 5.0]
-@test maximum(abs.(values .- first(values))) < 1e-7
-@test minimum(minimum.(solution.u)) > 0.0
+    problem = ODEProblem(
+        sir!, state, (0.0, 80.0), (0.05, 10.0, 0.25)
+    )
+    solution = solve(
+        problem, Tsit5(); saveat=0.1, reltol=1e-9, abstol=1e-11
+    )
+    totals = sum.(solution.u)
+    @test maximum(abs.(totals .- first(totals))) < 1e-7
+    @test minimum(minimum.(solution.u)) >= -1e-8
+    @test maximum(getindex.(solution.u, 2)) > state[2]
+end
+
+@testset "Lotka–Volterra model" begin
+    equilibrium = lotka_equilibrium(0.1, 0.02, 0.01, 0.3)
+    @test collect(equilibrium) ≈ [30.0, 5.0]
+
+    du = zeros(2)
+    lotka_volterra!(
+        du, collect(equilibrium), (0.1, 0.02, 0.01, 0.3), 0.0
+    )
+    @test du ≈ zeros(2) atol=1e-12
+
+    problem = ODEProblem(
+        lotka_volterra!,
+        [40.0, 9.0],
+        (0.0, 100.0),
+        (0.1, 0.02, 0.01, 0.3),
+    )
+    solution = solve(
+        problem, Tsit5(); saveat=0.1, reltol=1e-10, abstol=1e-12
+    )
+    values = lotka_invariant.(
+        getindex.(solution.u, 1),
+        getindex.(solution.u, 2),
+        0.1, 0.02, 0.01, 0.3,
+    )
+    @test maximum(abs.(values .- first(values))) < 1e-7
+    @test minimum(minimum.(solution.u)) > 0.0
+end
 ```
 
-Листинг 5 — Проверки численных инвариантов в `test/runtests.jl`
+Листинг 8 — Полный состав проверок в `test/runtests.jl`
 
 Всего выполнено 10 проверок: шесть для SIR и четыре для системы
 Лотки–Вольтерры. Все тесты завершились успешно.
@@ -468,6 +684,62 @@ JupyterLab распознаёт специальное ядро лаборато
 проверяется состав лабораторной и отсутствие локальных служебных файлов в Git.
 
 ![Проверка форматирования изменений](../image/11-terminal.png){#fig-diff-check width=94%}
+
+# Воспроизводимость
+
+Рабочая запись начинается уже внутри контейнера в каталоге
+`/workspace/labs/lab02/project`. Полный расчёт повторяется последовательностью:
+
+```bash
+make tangle
+make run
+make notebooks
+make docs
+make test
+```
+
+Те же этапы объединены целью `make all`. Полный `Makefile`, который используется
+в лабораторной работе, приведён в листинге 9.
+
+```makefile
+.PHONY: setup tangle run notebooks docs test all clean-results
+
+setup:
+	julia --project=. scripts/setup_environment.jl
+
+tangle:
+	julia --project=. scripts/tangle.jl scripts/01_sir.jl
+	julia --project=. scripts/tangle.jl scripts/02_lotka_volterra.jl
+
+run:
+	julia --project=. scripts/01_sir.jl
+	julia --project=. scripts/02_lotka_volterra.jl
+
+notebooks:
+	jupyter nbconvert --to notebook --execute --inplace \
+		--ExecutePreprocessor.kernel_name=julia-lab02-1.11 \
+		--ExecutePreprocessor.timeout=900 \
+		notebooks/01_sir/01_sir.ipynb
+	jupyter nbconvert --to notebook --execute --inplace \
+		--ExecutePreprocessor.kernel_name=julia-lab02-1.11 \
+		--ExecutePreprocessor.timeout=900 \
+		notebooks/02_lotka_volterra/02_lotka_volterra.ipynb
+
+docs:
+	quarto render markdown/01_sir/01_sir.qmd --to html --embed-resources
+	quarto render markdown/02_lotka_volterra/02_lotka_volterra.qmd --to html --embed-resources
+
+test:
+	julia --project=. test/runtests.jl
+
+all: tangle run notebooks docs test
+```
+
+Листинг 9 — Управляющие цели `labs/lab02/project/Makefile`
+
+Отчёт собирается отдельной командой `make` в каталоге `labs/lab02/report`.
+Презентация собирается в каталоге `labs/lab02/presentation`; там формируются
+самодостаточный HTML и версия PPTX для просмотра в PowerPoint.
 
 # Выводы
 
