@@ -1,8 +1,9 @@
-all:
-	-@quarto render
+SOURCE = simulation-modeling-lab07-report.qmd
+DOCX = simulation-modeling-lab07-report.docx
 
-clean:
-	-rm -rf _output
-
-cleanall: clean
-	-rm -rf .quarto
+.PHONY: all docx pdf
+all: docx pdf
+docx:
+	quarto render $(SOURCE) --to docx
+pdf: docx
+	libreoffice -env:UserInstallation=file:///tmp/lab07-report-office --headless --convert-to pdf --outdir . $(DOCX)
