@@ -88,9 +88,7 @@ $\rho\to1$. Это свойство особенно важно при прое�
 ```julia
 function theoretical_mm1(lambda::Real, mu::Real)
     lambda > 0 || throw(ArgumentError("lambda must be positive"))
-    mu > lambda || throw(ArgumentError(
-        "stationary M/M/1 requires mu > lambda"
-    ))
+    mu > lambda || throw(ArgumentError("stationary M/M/1 requires mu > lambda"))
     rho = lambda / mu
     return (
         rho=rho,
@@ -123,6 +121,36 @@ end
 
 ![Состав Julia-проекта и закреплённые зависимости](../image/02-terminal.png){#fig-lab03-tree width=92%}
 
+## Типы данных и интерфейс модуля
+
+```julia
+module QueueingModels
+
+using Random
+using Statistics
+
+export MM1Result, theoretical_mm1, simulate_mm1
+
+struct MM1Result
+    arrival_rate::Float64
+    service_rate::Float64
+    horizon::Float64
+    arrivals::Int
+    served::Int
+    lost::Int
+    utilization::Float64
+    mean_system::Float64
+    mean_queue::Float64
+    mean_wait::Float64
+    mean_sojourn::Float64
+    times::Vector{Float64}
+    queue_lengths::Vector{Int}
+    waits::Vector{Float64}
+end
+```
+
+Листинг 2 — Объявления модуля и типы данных из `src/queueing_models.jl`
+
 # Алгоритм имитации
 
 Модель хранит времена ближайшего поступления и ухода. На каждом шаге
@@ -130,28 +158,108 @@ end
 поэтому площади под траекториями $N(t)$ и $Q(t)$ накапливаются точно как суммы
 прямоугольников.
 
+Вектор `queue_arrivals` содержит времена прихода всех заявок в системе,
+включая обслуживаемую. Поэтому число ожидающих равно
+`max(length(queue_arrivals) - 1, 0)`. Поле `service_start` хранит начало
+текущего обслуживания; `next_departure = Inf` означает свободный прибор.
+В типе результата отдельно сохранены временные средние и выборка ожиданий.
+
 ```julia
-while true
-    event_time = min(next_arrival, next_departure)
-    event_time > horizon && break
+function simulate_mm1(lambda::Real, mu::Real; horizon::Real=1000.0,
+                      capacity::Integer=typemax(Int), seed::Integer=202603)
+    lambda > 0 || throw(ArgumentError("lambda must be positive"))
+    mu > 0 || throw(ArgumentError("mu must be positive"))
+    horizon > 0 || throw(ArgumentError("horizon must be positive"))
+    capacity >= 1 || throw(ArgumentError("capacity must be at least one"))
+
+    rng = MersenneTwister(seed)
+    next_arrival = randexp(rng) / lambda
+    next_departure = Inf
+    queue_arrivals = Float64[]
+    service_start = 0.0
+    t = 0.0
+    last_t = 0.0
+    area_system = 0.0
+    area_queue = 0.0
+    busy_area = 0.0
+    arrivals = served = lost = 0
+    waits = Float64[]
+    sojourns = Float64[]
+    times = Float64[0.0]
+    queue_lengths = Int[0]
+
+    while true
+        event_time = min(next_arrival, next_departure)
+        event_time > horizon && break
+        n_system = length(queue_arrivals)
+        dt = event_time - last_t
+        area_system += n_system * dt
+        area_queue += max(n_system - 1, 0) * dt
+        busy_area += (n_system > 0) * dt
+        t = event_time
+        last_t = t
+
+        if next_arrival <= next_departure
+            arrivals += 1
+            if length(queue_arrivals) < capacity
+                push!(queue_arrivals, t)
+                if length(queue_arrivals) == 1
+                    service_start = t
+                    next_departure = t + randexp(rng) / mu
+                end
+            else
+                lost += 1
+            end
+            next_arrival = t + randexp(rng) / lambda
+        else
+            arrival_time = popfirst!(queue_arrivals)
+            push!(waits, service_start - arrival_time)
+            push!(sojourns, t - arrival_time)
+            served += 1
+            if isempty(queue_arrivals)
+                next_departure = Inf
+            else
+                service_start = t
+                next_departure = t + randexp(rng) / mu
+            end
+        end
+        push!(times, t)
+        push!(queue_lengths, max(length(queue_arrivals) - 1, 0))
+    end
+
+    dt = horizon - last_t
     n_system = length(queue_arrivals)
-    dt = event_time - last_t
     area_system += n_system * dt
     area_queue += max(n_system - 1, 0) * dt
+    busy_area += (n_system > 0) * dt
 
-    if next_arrival <= next_departure
-        # постановка новой заявки в очередь
-    else
-        # завершение обслуживания первой заявки
-    end
+    return MM1Result(
+        Float64(lambda), Float64(mu), Float64(horizon), arrivals, served, lost,
+        busy_area / horizon, area_system / horizon, area_queue / horizon,
+        isempty(waits) ? NaN : mean(waits),
+        isempty(sojourns) ? NaN : mean(sojourns),
+        times, queue_lengths, waits,
+    )
 end
 ```
 
-Листинг 2 — Основной цикл событийной модели в `src/queueing_models.jl`
+Листинг 3 — Полная функция событийного моделирования из `src/queueing_models.jl`
 
 Интервалы формируются как `randexp(rng) / rate`. Начальные числа генератора
 фиксируются, что обеспечивает повторяемость. Время ожидания каждой обслуженной
 заявки вычисляется как разность между началом обслуживания и поступлением.
+
+При приходе счётчик `arrivals` увеличивается даже для отклонённой заявки.
+Если вместимость не исчерпана, время поступления добавляется в конец FIFO;
+для первой заявки сразу назначается уход. При уходе удаляется первый элемент,
+накапливаются ожидание и время в системе, затем назначается следующее обслуживание.
+
+Перед изменением состояния учитывается весь интервал от предыдущего события.
+После выхода из цикла добавляется остаток до `horizon`: без него средние
+длины и занятость были бы занижены. Площади делятся на длительность прогона,
+а ожидания усредняются только по обслуженным заявкам. Последние незавершённые
+заявки в эту выборку не входят; для короткого прогона это источник смещения.
+В начальный момент система пуста, отдельный период разогрева здесь не удаляется.
 
 # Базовый эксперимент
 
@@ -168,31 +276,64 @@ $$
 значений, после чего рассчитывает относительную ошибку каждой характеристики.
 
 ```julia
+# # Система массового обслуживания M/M/1
+#
+# **Цель:** выполнить дискретно-событийное моделирование одноканальной СМО,
+# сравнить статистические оценки с формулами теории очередей.
+
+using DrWatson
+@quickactivate "project"
+ENV["GKSwstype"] = "100"
+using CSV, DataFrames, Plots, Statistics
+include(srcdir("queueing_models.jl"))
+using .QueueingModels
+
+name = "01_mm1_queue"
+mkpath(datadir(name)); mkpath(plotsdir(name))
+
 lambda, mu = 30.0, 33.0
-result = simulate_mm1(
-    lambda, mu;
-    horizon=1000.0,
-    capacity=10_000,
-    seed=202603,
-)
+result = simulate_mm1(lambda, mu; horizon=1000.0, capacity=10_000, seed=202603)
 theory = theoretical_mm1(lambda, mu)
 
-summary = DataFrame(
-    metric=["rho", "L", "Lq", "W", "Wq"],
-    theory=[
-        theory.rho, theory.mean_system, theory.mean_queue,
-        theory.mean_sojourn, theory.mean_wait,
-    ],
-    simulation=[
-        result.utilization, result.mean_system, result.mean_queue,
-        result.mean_sojourn, result.mean_wait,
-    ],
-)
-summary.relative_error =
-    abs.((summary.simulation .- summary.theory) ./ summary.theory)
+summary = DataFrame(metric=["rho", "L", "Lq", "W", "Wq"],
+    theory=[theory.rho, theory.mean_system, theory.mean_queue, theory.mean_sojourn, theory.mean_wait],
+    simulation=[result.utilization, result.mean_system, result.mean_queue, result.mean_sojourn, result.mean_wait])
+summary.relative_error = abs.((summary.simulation .- summary.theory) ./ summary.theory)
+CSV.write(datadir(name, "summary.csv"), summary)
+CSV.write(datadir(name, "waits.csv"), DataFrame(wait=result.waits))
+
+println("=== СМО M/M/1: базовый эксперимент ===")
+println("lambda = $lambda, mu = $mu, rho = $(round(theory.rho; digits=4))")
+println("Заявок: $(result.arrivals), обслужено: $(result.served), потеряно: $(result.lost)")
+show(summary; allrows=true, allcols=true); println()
+
+default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
+limit = searchsortedlast(result.times, 20.0)
+p1 = plot(result.times[1:limit], result.queue_lengths[1:limit]; seriestype=:steppost,
+    xlabel="Время", ylabel="Длина очереди", label="Q(t)",
+    title="Фрагмент траектории очереди M/M/1", size=(1000,620))
+savefig(p1, plotsdir(name, "queue_trajectory.png"))
+
+p2 = histogram(result.waits; bins=50, normalize=:pdf, alpha=0.65,
+    xlabel="Время ожидания", ylabel="Плотность", label="моделирование",
+    title="Распределение времени ожидания", size=(1000,620))
+savefig(p2, plotsdir(name, "wait_histogram.png"))
+
+p3 = plot(summary.metric, summary.theory; marker=:circle, markersize=8,
+    label="теория", ylabel="Значение", title="Теория и имитация M/M/1",
+    size=(1000,620))
+plot!(p3, summary.metric, summary.simulation; marker=:diamond, markersize=7,
+    linestyle=:dash, label="моделирование")
+savefig(p3, plotsdir(name, "theory_vs_simulation.png"))
+
+# Полученные оценки близки к стационарным формулам; небольшое отличие связано
+# с конечной длительностью одного случайного прогона.
 ```
 
-Листинг 3 — Базовый расчёт в `scripts/01_mm1_queue.jl`
+Листинг 4 — Полный сценарий базового эксперимента из `scripts/01_mm1_queue.jl`
+
+{{< pagebreak >}}
 
 | Показатель | Теория | Имитация | Относительная ошибка |
 |---|---:|---:|---:|
@@ -206,6 +347,13 @@ summary.relative_error =
 
 Расхождение в @tbl-base объясняется конечной длительностью случайного прогона.
 Все пять оценок согласуются с теорией с ошибкой не более 5,3%.
+
+Столбцы `theory` и `simulation` имеют одинаковый порядок метрик.
+В `relative_error` хранится доля, а в таблице отчёта она переведена в проценты.
+Помимо `summary.csv`, сценарий сохраняет все наблюдённые ожидания в `waits.csv`.
+Траектория изображается ступенчатой линией на первых 20 единицах времени;
+гистограмма нормирована как плотность. Все три рисунка создаются из того же
+объекта `result`, без повторного случайного прогона.
 
 ![Сопоставление теории и имитации M/M/1](../image/03-plot.png){#fig-compare width=86%}
 
@@ -227,33 +375,60 @@ summary.relative_error =
 продолжительностью 1500 единиц модельного времени.
 
 ```julia
+# # Нагрузочный эксперимент для M/M/1
+#
+# **Цель:** показать нелинейный рост очереди при приближении загрузки к единице.
+
+using DrWatson
+@quickactivate "project"
+ENV["GKSwstype"] = "100"
+using CSV, DataFrames, Plots, Statistics
+include(srcdir("queueing_models.jl"))
+using .QueueingModels
+
+name = "02_load_scan"
+mkpath(datadir(name)); mkpath(plotsdir(name))
 mu = 33.0
 lambdas = [10.0, 20.0, 25.0, 28.0, 30.0, 31.5, 32.5]
 rows = NamedTuple[]
 
 for (i, lambda) in enumerate(lambdas)
-    runs = [
-        simulate_mm1(
-            lambda, mu;
-            horizon=1500.0,
-            seed=202603 + 100i + r,
-        )
-        for r in 1:30
-    ]
+    runs = [simulate_mm1(lambda, mu; horizon=1500.0, seed=202603 + 100i + r) for r in 1:30]
     theory = theoretical_mm1(lambda, mu)
-    push!(rows, (
-        lambda=lambda,
-        rho=theory.rho,
+    push!(rows, (lambda=lambda, rho=theory.rho,
         theory_Lq=theory.mean_queue,
         simulation_Lq=mean(getfield.(runs, :mean_queue)),
         simulation_Wq=mean(getfield.(runs, :mean_wait)),
-    ))
+        utilization=mean(getfield.(runs, :utilization))))
 end
+
+scan = DataFrame(rows)
+CSV.write(datadir(name, "load_scan.csv"), scan)
+println("=== Нагрузочный эксперимент M/M/1 ===")
+show(scan; allrows=true, allcols=true); println()
+
+default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
+p1 = plot(scan.rho, scan.theory_Lq; label="теория", xlabel="Загрузка rho",
+    ylabel="Средняя длина очереди", title="Рост очереди при rho → 1",
+    size=(1000,620), marker=:circle)
+plot!(p1, scan.rho, scan.simulation_Lq; label="моделирование", marker=:diamond)
+savefig(p1, plotsdir(name, "load_curve.png"))
+
+p2 = plot(scan.rho, scan.simulation_Wq; label="Wq", xlabel="Загрузка rho",
+    ylabel="Среднее ожидание", title="Задержка в зависимости от нагрузки",
+    size=(1000,620), marker=:circle, color=:red)
+savefig(p2, plotsdir(name, "wait_curve.png"))
+
+# При rho, близком к единице, статистическая вариативность возрастает вместе
+# со средней длиной очереди и временем ожидания.
 ```
 
-Листинг 4 — Нагрузочный эксперимент в `scripts/02_load_scan.jl`
+Листинг 5 — Полный сценарий нагрузочного эксперимента из `scripts/02_load_scan.jl`
 
-| $\lambda$ | $\rho$ | Теоретическое $L_q$ | Имитационное $L_q$ | Имитационное $W_q$ |
+{{< pagebreak >}}
+
+| $\lambda$ | $\rho$ | $L_q$ (теория) | $L_q$ (модель) | $W_q$ (модель) |
 |---:|---:|---:|---:|---:|
 | 10,0 | 0,3030 | 0,1318 | 0,1314 | 0,0132 |
 | 20,0 | 0,6061 | 0,9324 | 0,9199 | 0,0461 |
@@ -264,6 +439,14 @@ end
 | 32,5 | 0,9848 | 64,0152 | 65,3523 | 2,0059 |
 
 : Результаты нагрузочного эксперимента {#tbl-load}
+
+Для каждого уровня нагрузки усредняются 30 значений `mean_queue` и
+`mean_wait`; это не объединение отдельных ожиданий в одну выборку.
+Индекс уровня и номер повтора включены в seed. Поэтому строка $\lambda=30$
+здесь отличается от одиночного базового опыта: $L_q=9{,}0916$, а не $8{,}6101$.
+Разные начальные числа позволяют повторить серию без совпадения траекторий.
+Доверительные интервалы в данном эксперименте не рассчитывались, поэтому
+таблица характеризует средние оценки, а не точность с заданной вероятностью.
 
 ![Средняя очередь при изменении загрузки](../image/04-plot.png){#fig-load width=88%}
 
@@ -281,26 +464,23 @@ Jupyter-ноутбук. Полученные IPYNB выполняются с я�
 работы, поэтому в них сохраняются реальные таблицы и текстовый вывод.
 
 ```julia
+using DrWatson
+@quickactivate "project"
+using Literate
+
 function generate_formats(source::AbstractString)
     name = splitext(basename(source))[1]
-    foreach(mkpath, (
-        scriptsdir(name),
-        projectdir("markdown", name),
-        projectdir("notebooks", name),
-    ))
-    Literate.script(source, scriptsdir(name); name, credit=false)
-    Literate.notebook(
-        source, projectdir("notebooks", name);
-        name, execute=false, credit=false,
-    )
-    Literate.markdown(
-        source, projectdir("markdown", name);
-        name, flavor=Literate.QuartoFlavor(), credit=false,
-    )
+    foreach(mkpath, (scriptsdir(name), projectdir("markdown", name), projectdir("notebooks", name)))
+    Literate.script(source, scriptsdir(name); name=name, credit=false)
+    Literate.notebook(source, projectdir("notebooks", name); name=name, execute=false, credit=false)
+    Literate.markdown(source, projectdir("markdown", name); name=name,
+        flavor=Literate.QuartoFlavor(), credit=false)
 end
+
+foreach(generate_formats, ARGS)
 ```
 
-Листинг 5 — Генерация производных форматов в `scripts/tangle.jl`
+Листинг 6 — Генерация производных форматов в `scripts/tangle.jl`
 
 ![Выполненный блокнот базового эксперимента M/M/1](../image/01-jupyter.png){#fig-lab03-jupyter-base width=92%}
 
@@ -313,6 +493,19 @@ end
 близость загрузки и $L$ к аналитическим значениям.
 
 ```julia
+using Test
+include(joinpath(@__DIR__, "..", "src", "queueing_models.jl"))
+using .QueueingModels
+
+@testset "M/M/1 formulas" begin
+    t = theoretical_mm1(3.0, 5.0)
+    @test t.rho == 0.6
+    @test isapprox(t.mean_system, 1.5)
+    @test isapprox(t.mean_queue, 0.9)
+    @test isapprox(t.mean_sojourn, 0.5)
+    @test_throws ArgumentError theoretical_mm1(5.0, 5.0)
+end
+
 @testset "M/M/1 simulation" begin
     r = simulate_mm1(3.0, 5.0; horizon=20_000.0, seed=42)
     @test r.arrivals >= r.served
@@ -324,12 +517,47 @@ end
 end
 ```
 
-Листинг 6 — Статистические проверки в `test/runtests.jl`
+Листинг 7 — Статистические проверки в `test/runtests.jl`
 
-Все 11 проверок пройдены. Отдельно выполнены `git diff --check` и проверка
-чистоты рабочего дерева.
+Все 11 проверок пройдены: пять проверок стационарных формул и шесть проверок
+имитации. Для тестового прогона используются $\lambda=3$, $\mu=5$,
+$T=20000$ и seed 42, то есть параметры отличаются от демонстрационного опыта.
+Допуски 0,03 для загрузки и 0,15 для среднего числа заявок учитывают случайность.
+Эти тесты не являются доказательством стационарности любого набора параметров.
 
 ![Результат выполнения автоматических проверок](../image/03-terminal.png){#fig-lab03-tests width=92%}
+
+## Воспроизведение расчётов и сборка материалов
+
+Команды выполняются в терминале контейнера из каталога лабораторной.
+
+```bash
+cd /workspace/labs/lab03/project
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+make setup
+make all
+make test
+jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+```
+
+Листинг 8 — Восстановление окружения, расчёты и запуск JupyterLab
+
+Цель `tangle` создаёт производные исходники, `run` выполняет оба эксперимента,
+`notebooks` исполняет IPYNB, `docs` собирает вычислительные HTML-страницы,
+а `test` запускает проверки общего модуля. В JupyterLab открываются файлы
+из `notebooks`; ядро Julia устанавливается командой `make setup`.
+
+```bash
+cd /workspace/labs/lab03/report
+make all
+cd ../presentation
+make all
+```
+
+Листинг 9 — Сборка отчёта DOCX/PDF и HTML-презентации
+
+Quarto создаёт DOCX и HTML, LibreOffice — PDF. PPTX редактируется отдельно;
+цель `make all` презентации пересобирает HTML и проверяет наличие PPTX.
 
 # Выводы
 

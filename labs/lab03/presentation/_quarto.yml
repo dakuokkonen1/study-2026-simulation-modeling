@@ -16,6 +16,6 @@ format:
     controls: true
     progress: true
     smaller: true
-    theme: simple
+    theme: theme.scss
     logo: ../image/logo-rudn.png
     css: styles.css

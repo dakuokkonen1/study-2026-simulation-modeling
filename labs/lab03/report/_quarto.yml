@@ -20,6 +20,7 @@ format:
     code-fold: true
     smooth-scroll: true
   docx:
+    reference-doc: reference.docx
     toc: false
     number-sections: true
     toc-depth: 2
