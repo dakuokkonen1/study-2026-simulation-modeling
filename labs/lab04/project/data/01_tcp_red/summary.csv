@@ -1,6 +1,0 @@
-metric,value
-mean_cwnd,24.52335440138849
-mean_queue,58.751883192043934
-mean_average_queue,56.4558360553899
-mean_throughput_mbps,18.76541533629153
-loss_events,446.0

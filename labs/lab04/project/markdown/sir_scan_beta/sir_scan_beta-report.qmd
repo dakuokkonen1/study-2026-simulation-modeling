@@ -1,0 +1,25 @@
+### Агентная SIR: сканирование β
+
+Десять значений β и три seed, всего 30 независимых прогонов по 100 дней.
+
+#### Рабочее окружение
+
+```julia
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiments.jl"))
+```
+
+#### Численные эксперименты
+
+```julia
+result = beta_scan()
+```
+
+#### Средние показатели по повторам
+
+```julia
+savefig(result.fig, imagefile("02-plot.png"))
+display(result.fig)
+result.grouped
+```

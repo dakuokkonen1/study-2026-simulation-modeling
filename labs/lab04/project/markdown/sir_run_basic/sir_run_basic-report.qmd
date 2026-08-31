@@ -1,0 +1,25 @@
+### Агентная SIR: базовый опыт
+
+Три города по 1000 человек, исходный заражённый в третьем городе, seed 42, 100 дней.
+
+#### Рабочее окружение
+
+```julia
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiments.jl"))
+```
+
+#### Выполнение и сохранение JLD2 / CSV
+
+```julia
+result = basic_experiment()
+```
+
+#### S, I, R и число живых
+
+```julia
+savefig(result.fig, imagefile("01-plot.png"))
+display(result.fig)
+result.df[1:10:end, :]
+```

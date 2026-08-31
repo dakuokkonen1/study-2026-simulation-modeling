@@ -1,6 +1,5 @@
 /.julia/
 /.jupyter/
-/data/
-/plots/
-/notebooks/
-/markdown/
+/LocalPreferences.toml
+/.quarto/
+**/*_files/

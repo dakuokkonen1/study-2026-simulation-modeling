@@ -1,0 +1,13 @@
+intensity,peak_time,peak,configuration
+0.0,15.0,0.33325923455966805,equal
+0.1,22.0,1.0,equal
+0.2,16.0,1.0,equal
+0.3,17.0,1.0,equal
+0.4,19.0,1.0,equal
+0.5,20.0,1.0,equal
+0.0,16.333333333333332,0.16666666666666666,unequal
+0.1,22.0,1.0,unequal
+0.2,20.0,1.0,unequal
+0.3,20.0,1.0,unequal
+0.4,21.0,1.0,unequal
+0.5,18.666666666666668,1.0,unequal

@@ -1,0 +1,26 @@
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiments.jl"))
+
+result = optimize_sir("sir_optimize_parameters__param"; seeds = 143:147)
+
+baseline = CSV.read(
+    datafile("sir_optimize_parameters", "pareto.csv"),
+    DataFrame,
+)
+figure = scatter(
+    baseline.peak,
+    baseline.death_fraction;
+    label = "seed 43–47",
+    xlabel = "Средний пик",
+    ylabel = "Средняя доля умерших",
+)
+scatter!(
+    figure,
+    result.pareto.peak,
+    result.pareto.death_fraction;
+    label = "seed 143–147",
+)
+savefig(figure, imagefile("09-plot.png"))
+display(figure)
+result.pareto

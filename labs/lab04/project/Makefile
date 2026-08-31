@@ -1,27 +1,27 @@
-.PHONY: setup tangle run notebooks docs test all
+SCRIPTS = scripts/sir_run_basic.jl scripts/sir_scan_beta.jl scripts/sir_migration_effect.jl scripts/sir_optimize_parameters.jl scripts/sir_visualize_dynamics.jl scripts/sir_run_basic__param.jl scripts/sir_scan_beta__param.jl scripts/sir_migration_effect__param.jl scripts/sir_optimize_parameters__param.jl scripts/sir_extra_1_2_3.jl scripts/sir_extra_4_5.jl scripts/sir_extra_6.jl
+
+.PHONY: setup run tangle notebooks docs test all
 
 setup:
 	julia --project=. scripts/setup_environment.jl
 
-tangle:
-	julia --project=. scripts/tangle.jl scripts/01_tcp_red.jl
-	julia --project=. scripts/tangle.jl scripts/02_flow_scan.jl
-
 run:
-	julia --project=. scripts/01_tcp_red.jl
-	julia --project=. scripts/02_flow_scan.jl
+	@for script in $(SCRIPTS); do julia --project=. $$script || exit $$?; done
+
+tangle:
+	julia --project=. scripts/tangle.jl $(SCRIPTS)
 
 notebooks:
-	jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.kernel_name=julia-lab04-1.11 --ExecutePreprocessor.timeout=900 notebooks/01_tcp_red/01_tcp_red.ipynb
-	jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.kernel_name=julia-lab04-1.11 --ExecutePreprocessor.timeout=900 notebooks/02_flow_scan/02_flow_scan.ipynb
+	julia --project=. scripts/tangle.jl --execute $(SCRIPTS)
 
-docs: notebooks
-	quarto render notebooks/01_tcp_red/01_tcp_red.ipynb --to html --embed-resources --no-execute
-	mv notebooks/01_tcp_red/01_tcp_red.html markdown/01_tcp_red/01_tcp_red.html
-	quarto render notebooks/02_flow_scan/02_flow_scan.ipynb --to html --embed-resources --no-execute
-	mv notebooks/02_flow_scan/02_flow_scan.html markdown/02_flow_scan/02_flow_scan.html
+docs:
+	@for script in $(SCRIPTS); do name=$$(basename $$script .jl); (cd notebooks/$$name && quarto render $$name.ipynb --to html --embed-resources --no-execute --output $$name.html) || exit $$?; mv notebooks/$$name/$$name.html markdown/$$name/$$name.html; done
 
 test:
 	julia --project=. test/runtests.jl
 
-all: tangle run notebooks docs test
+all:
+	$(MAKE) run
+	$(MAKE) notebooks
+	$(MAKE) docs
+	$(MAKE) test

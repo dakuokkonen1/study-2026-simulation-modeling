@@ -1,3 +1,1 @@
-module project
-include("tcp_red.jl")
-end
+module project end

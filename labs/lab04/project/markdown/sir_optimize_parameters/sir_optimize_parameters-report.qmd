@@ -1,0 +1,25 @@
+### Агентная SIR: многокритериальная оптимизация
+
+Borg MOEA минимизирует средний пик и смертность; каждая оценка содержит пять прогонов.
+
+#### Рабочее окружение
+
+```julia
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiments.jl"))
+```
+
+#### Поиск с бюджетом методички 120 секунд
+
+```julia
+result = optimize_sir()
+```
+
+#### Исследованные точки и недоминируемые решения
+
+```julia
+savefig(result.fig, imagefile("04-plot.png"))
+display(result.fig)
+result.pareto
+```
