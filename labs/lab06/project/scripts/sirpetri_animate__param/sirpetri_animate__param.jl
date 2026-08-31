@@ -1,0 +1,19 @@
+using DrWatson
+@quickactivate "project"
+include(srcdir("SIRPetri.jl"))
+using .SIRPetri
+include(srcdir("experiment_support.jl"))
+
+animation_rows = NamedTuple[]
+for (case_id, β) in enumerate([0.1, 0.3, 0.8])
+    net, u0, _ = build_sir_network(β, 0.1)
+    df = simulate_deterministic(net, u0, (0.0,100.0); saveat=0.2, rates=[β,0.1])
+    save_table("parameters/animation_$(case_id).csv", df)
+    filename = "0$(case_id+1)-animation.gif"
+    anim = animate_sir(df, filename; title="beta=$(β), gamma=0.1")
+    display(anim)
+    push!(animation_rows, (β=β, γ=0.1, frames=nrow(df), dt=0.2, end_time=df.time[end]))
+end
+animation_manifest = DataFrame(animation_rows)
+save_table("sir_animation_param_summary.csv", animation_manifest)
+animation_manifest

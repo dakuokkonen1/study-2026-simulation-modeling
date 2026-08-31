@@ -1,0 +1,6 @@
+.julia/
+.jupyter/
+.ipynb_checkpoints/
+.quarto/
+*_files/
+*.log

@@ -1,0 +1,34 @@
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiment_support.jl"))
+
+replicates = CSV.read(datadir("sir_param_replicates.csv"), DataFrame)
+summary = CSV.read(datadir("sir_param_summary.csv"), DataFrame)
+deterministic = CSV.read(datadir("sir_param_deterministic.csv"), DataFrame)
+scan = CSV.read(datadir("sir_scan_param.csv"), DataFrame)
+animation_summary = CSV.read(datadir("sir_animation_param_summary.csv"), DataFrame)
+(replicates=nrow(replicates), combinations=nrow(summary), scan_points=nrow(scan),
+    animations=nrow(animation_summary))
+
+comparison = innerjoin(summary, deterministic[:, [:case_id, :refined_peak]]; on=:case_id)
+comparison.difference = comparison.peak_mean .- comparison.refined_peak
+save_table("sir_param_comparison.csv", comparison)
+comparison
+
+p_peak = plot(comparison.refined_peak, comparison.peak_mean;
+    yerror=comparison.peak_sd, seriestype=:scatter, label="Mean SSA +/- SD",
+    xlabel="Refined ODE peak", ylabel="SSA peak", title="Nine parameter combinations")
+lims = extrema(vcat(comparison.refined_peak, comparison.peak_mean))
+plot!(p_peak, collect(lims), collect(lims); label="Equality", linestyle=:dash)
+p_final = plot(; xlabel="beta", ylabel="R(100)", title="Finite-horizon recovered population")
+for γ in sort(unique(scan.γ))
+    d = sort(scan[scan.γ .== γ,:], :β)
+    plot!(p_final, d.β, d.final_R; marker=:circle, label="gamma=$(γ)")
+end
+p = plot(p_peak, p_final; layout=(1,2), size=(1200,550))
+savefig(p, imagepath("12-plot.png"))
+display(p)
+
+DataFrame(total_SSA_runs=[nrow(replicates)], seeds_unique=[length(unique(replicates.seed))],
+    max_conservation_error=[maximum(replicates.conservation_error)],
+    total_animation_frames=[sum(animation_summary.frames)])
