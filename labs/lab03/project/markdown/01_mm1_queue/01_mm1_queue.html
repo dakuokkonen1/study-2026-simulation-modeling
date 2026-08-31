@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>mm1_queue</title>
+<title>Система массового обслуживания M/M/1</title>
 <style>
 
 span.smallcaps{font-variant: small-caps;}
@@ -2228,7 +2228,7 @@ vertical-align: -.125em;
 
 
 <p><strong>Цель:</strong> выполнить дискретно-событийное моделирование одноканальной СМО, сравнить статистические оценки с формулами теории очередей.</p>
-<div id="2" class="cell" data-execution_count="1">
+<div id="cell-2" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-31T09:40:03.692000Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-31T09:40:03.688000Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-31T09:40:20.986000Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-31T09:40:20.986000Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DrWatson</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp">@quickactivate</span> <span class="st">&quot;project&quot;</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cn">ENV</span>[<span class="st">&quot;GKSwstype&quot;</span>] <span class="op">=</span> <span class="st">&quot;100&quot;</span></span>
@@ -2255,40 +2255,50 @@ vertical-align: -.125em;
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;Заявок: </span><span class="sc">$</span>(result.arrivals)<span class="st">, обслужено: </span><span class="sc">$</span>(result.served)<span class="st">, потеряно: </span><span class="sc">$</span>(result.lost)<span class="st">&quot;</span>)</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="fu">show</span>(summary; allrows<span class="op">=</span><span class="cn">true</span>, allcols<span class="op">=</span><span class="cn">true</span>); <span class="fu">println</span>()</span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.4</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>)</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>limit <span class="op">=</span> <span class="fu">searchsortedlast</span>(result.times, <span class="fl">20.0</span>)</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(result.times[<span class="fl">1</span><span class="op">:</span>limit], result.queue_lengths[<span class="fl">1</span><span class="op">:</span>limit]; seriestype<span class="op">=:</span>steppost,</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Длина очереди&quot;</span>, label<span class="op">=</span><span class="st">&quot;Q(t)&quot;</span>,</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">&quot;Фрагмент траектории очереди M/M/1&quot;</span>, size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;queue_trajectory.png&quot;</span>))</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">histogram</span>(result.waits; bins<span class="op">=</span><span class="fl">50</span>, normalize<span class="op">=:</span>pdf, alpha<span class="op">=</span><span class="fl">0.65</span>,</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Время ожидания&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Плотность&quot;</span>, label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>,</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">&quot;Распределение времени ожидания&quot;</span>, size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;wait_histogram.png&quot;</span>))</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>p3 <span class="op">=</span> <span class="fu">bar</span>(summary.metric, summary.theory; bar_position<span class="op">=:</span>dodge, bar_width<span class="op">=</span><span class="fl">0.38</span>,</span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">&quot;теория&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Значение&quot;</span>, title<span class="op">=</span><span class="st">&quot;Теория и имитация M/M/1&quot;</span>,</span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="fu">bar!</span>(p3, summary.metric, summary.simulation; bar_position<span class="op">=:</span>dodge,</span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    bar_width<span class="op">=</span><span class="fl">0.38</span>, label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>)</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p3, <span class="fu">plotsdir</span>(name, <span class="st">&quot;theory_vs_simulation.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.4</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    left_margin<span class="op">=</span><span class="fl">5</span> <span class="op">*</span> Plots.mm)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>limit <span class="op">=</span> <span class="fu">searchsortedlast</span>(result.times, <span class="fl">20.0</span>)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(result.times[<span class="fl">1</span><span class="op">:</span>limit], result.queue_lengths[<span class="fl">1</span><span class="op">:</span>limit]; seriestype<span class="op">=:</span>steppost,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Длина очереди&quot;</span>, label<span class="op">=</span><span class="st">&quot;Q(t)&quot;</span>,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">&quot;Фрагмент траектории очереди M/M/1&quot;</span>, size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;queue_trajectory.png&quot;</span>))</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">histogram</span>(result.waits; bins<span class="op">=</span><span class="fl">50</span>, normalize<span class="op">=:</span>pdf, alpha<span class="op">=</span><span class="fl">0.65</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Время ожидания&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Плотность&quot;</span>, label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">&quot;Распределение времени ожидания&quot;</span>, size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;wait_histogram.png&quot;</span>))</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>p3 <span class="op">=</span> <span class="fu">plot</span>(summary.metric, summary.theory; marker<span class="op">=:</span>circle, markersize<span class="op">=</span><span class="fl">8</span>,</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">&quot;теория&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Значение&quot;</span>, title<span class="op">=</span><span class="st">&quot;Теория и имитация M/M/1&quot;</span>,</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(p3, summary.metric, summary.simulation; marker<span class="op">=:</span>diamond, markersize<span class="op">=</span><span class="fl">7</span>,</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>    linestyle<span class="op">=:</span>dash, label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>)</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p3, <span class="fu">plotsdir</span>(name, <span class="st">&quot;theory_vs_simulation.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
 <pre>=== СМО M/M/1: базовый эксперимент ===
+
 lambda = 30.0, mu = 33.0, rho = 0.9091
+
 Заявок: 29825, обслужено: 29825, потеряно: 0
+
 <span class="ansi-bold">5×4 DataFrame</span>
+
 <span class="ansi-bold"> Row </span>│<span class="ansi-bold"> metric </span><span class="ansi-bold"> theory    </span><span class="ansi-bold"> simulation </span><span class="ansi-bold"> relative_error </span>
+
 <span class="ansi-bold">     </span>│<span class="ansi-bright-black-fg"> String </span><span class="ansi-bright-black-fg"> Float64   </span><span class="ansi-bright-black-fg"> Float64    </span><span class="ansi-bright-black-fg"> Float64        </span>
+
 ─────┼───────────────────────────────────────────────
+
    1 │ rho      0.909091    0.914581      0.00603923
+
    2 │ L       10.0         9.52472       0.047528
+
    3 │ Lq       9.09091     8.61014       0.0528848
+
    4 │ W        0.333333    0.319354      0.0419393
+
    5 │ Wq       0.30303     0.288689      0.0473275
-<span class="ansi-yellow-fg ansi-bold">┌ </span><span class="ansi-yellow-fg ansi-bold">Warning: </span>Keyword argument bar_position not supported with Plots.GRBackend().  Choose from: annotationcolor, annotationfontfamily, annotationfontsize, annotationhalign, annotationrotation, annotations, annotationvalign, arrow, aspect_ratio, axis, background_color, background_color_inside, background_color_outside, background_color_subplot, bar_width, bins, bottom_margin, camera, clims, color_palette, colorbar, colorbar_entry, colorbar_scale, colorbar_title, colorbar_titlefont, colorbar_titlefontcolor, colorbar_titlefontrotation, colorbar_titlefontsize, connections, contour_labels, discrete_values, fill, fill_z, fillalpha, fillcolor, fillrange, fillstyle, flip, fontfamily, fontfamily_subplot, foreground_color, foreground_color_axis, foreground_color_border, foreground_color_grid, foreground_color_subplot, foreground_color_text, formatter, framestyle, grid, gridalpha, gridlinewidth, gridstyle, group, guide, guidefont, guidefontcolor, guidefontfamily, guidefonthalign, guidefontrotation, guidefontsize, guidefontvalign, html_output_format, inset_subplots, label, layout, left_margin, legend_background_color, legend_column, legend_font, legend_font_color, legend_font_family, legend_font_halign, legend_font_pointsize, legend_font_rotation, legend_font_valign, legend_foreground_color, legend_position, legend_title, legend_title_font_color, legend_title_font_family, legend_title_font_pointsize, legend_title_font_rotation, legend_title_font_valigm, levels, lims, line, line_z, linealpha, linecolor, linestyle, linewidth, link, margin, marker_z, markeralpha, markercolor, markershape, markersize, markerstrokealpha, markerstrokecolor, markerstrokewidth, minorgrid, minorgridalpha, minorgridlinewidth, minorgridstyle, minorticks, mirror, normalize, orientation, overwrite_figure, permute, plot_title, plot_titlefontcolor, plot_titlefontfamily, plot_titlefontrotation, plot_titlefontsize, plot_titlelocation, plot_titlevspan, polar, primary, projection, quiver, ribbon, right_margin, rotation, scale, series_annotations, seriesalpha, seriescolor, seriestype, show, show_empty_bins, showaxis, size, smooth, subplot, subplot_index, thickness_scaling, tick_direction, tickfontcolor, tickfontfamily, tickfonthalign, tickfontrotation, tickfontsize, tickfontvalign, ticks, title, titlefontcolor, titlefontfamily, titlefonthalign, titlefontrotation, titlefontsize, titlefontvalign, top_margin, unitformat, weights, widen, window_title, x, xdiscrete_values, xerror, xflip, xforeground_color_axis, xforeground_color_border, xforeground_color_grid, xforeground_color_text, xformatter, xgrid, xgridalpha, xgridlinewidth, xgridstyle, xguide, xguidefontcolor, xguidefontfamily, xguidefonthalign, xguidefontrotation, xguidefontsize, xguidefontvalign, xlims, xlink, xminorgrid, xminorgridalpha, xminorgridlinewidth, xminorgridstyle, xminorticks, xmirror, xrotation, xscale, xshowaxis, xtick_direction, xtickfontcolor, xtickfontfamily, xtickfonthalign, xtickfontrotation, xtickfontsize, xtickfontvalign, xticks, xunitformat, xwiden, y, ydiscrete_values, yerror, yflip, yforeground_color_axis, yforeground_color_border, yforeground_color_grid, yforeground_color_text, yformatter, ygrid, ygridalpha, ygridlinewidth, ygridstyle, yguide, yguidefontcolor, yguidefontfamily, yguidefonthalign, yguidefontrotation, yguidefontsize, yguidefontvalign, ylims, ylink, yminorgrid, yminorgridalpha, yminorgridlinewidth, yminorgridstyle, yminorticks, ymirror, yrotation, yscale, yshowaxis, ytick_direction, ytickfontcolor, ytickfontfamily, ytickfonthalign, ytickfontrotation, ytickfontsize, ytickfontvalign, yticks, yunitformat, ywiden, z, z_order, zdiscrete_values, zerror, zflip, zforeground_color_axis, zforeground_color_border, zforeground_color_grid, zforeground_color_text, zformatter, zgrid, zgridalpha, zgridlinewidth, zgridstyle, zguide, zguidefontcolor, zguidefontfamily, zguidefonthalign, zguidefontrotation, zguidefontsize, zguidefontvalign, zlims, zlink, zminorgrid, zminorgridalpha, zminorgridlinewidth, zminorgridstyle, zminorticks, zmirror, zrotation, zscale, zshowaxis, ztick_direction, ztickfontcolor, ztickfontfamily, ztickfonthalign, ztickfontrotation, ztickfontsize, ztickfontvalign, zticks, zunitformat, zwiden
-<span class="ansi-yellow-fg ansi-bold">└ </span><span class="ansi-bright-black-fg">@ Plots /workspace/labs/lab03/project/.julia/packages/Plots/h49MV/src/args.jl:1563</span>
 </pre>
 </div>
 </div>

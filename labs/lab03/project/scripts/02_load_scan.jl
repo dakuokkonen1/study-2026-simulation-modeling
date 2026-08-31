@@ -30,7 +30,8 @@ CSV.write(datadir(name, "load_scan.csv"), scan)
 println("=== Нагрузочный эксперимент M/M/1 ===")
 show(scan; allrows=true, allcols=true); println()
 
-default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22)
+default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
 p1 = plot(scan.rho, scan.theory_Lq; label="теория", xlabel="Загрузка rho",
     ylabel="Средняя длина очереди", title="Рост очереди при rho → 1",
     size=(1000,620), marker=:circle)

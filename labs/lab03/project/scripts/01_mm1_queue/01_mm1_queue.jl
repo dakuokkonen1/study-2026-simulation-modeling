@@ -24,7 +24,8 @@ println("lambda = $lambda, mu = $mu, rho = $(round(theory.rho; digits=4))")
 println("Заявок: $(result.arrivals), обслужено: $(result.served), потеряно: $(result.lost)")
 show(summary; allrows=true, allcols=true); println()
 
-default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22)
+default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
 limit = searchsortedlast(result.times, 20.0)
 p1 = plot(result.times[1:limit], result.queue_lengths[1:limit]; seriestype=:steppost,
     xlabel="Время", ylabel="Длина очереди", label="Q(t)",

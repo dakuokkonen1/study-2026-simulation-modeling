@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>load_scan</title>
+<title>Нагрузочный эксперимент для M/M/1</title>
 <style>
 
 span.smallcaps{font-variant: small-caps;}
@@ -2228,7 +2228,7 @@ vertical-align: -.125em;
 
 
 <p><strong>Цель:</strong> показать нелинейный рост очереди при приближении загрузки к единице.</p>
-<div id="2" class="cell" data-execution_count="1">
+<div id="cell-2" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-31T09:40:25.246000Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-31T09:40:25.221000Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-31T09:40:48.885000Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-31T09:40:48.885000Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DrWatson</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp">@quickactivate</span> <span class="st">&quot;project&quot;</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cn">ENV</span>[<span class="st">&quot;GKSwstype&quot;</span>] <span class="op">=</span> <span class="st">&quot;100&quot;</span></span>
@@ -2257,30 +2257,42 @@ vertical-align: -.125em;
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;=== Нагрузочный эксперимент M/M/1 ===&quot;</span>)</span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">show</span>(scan; allrows<span class="op">=</span><span class="cn">true</span>, allcols<span class="op">=</span><span class="cn">true</span>); <span class="fu">println</span>()</span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.4</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>)</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(scan.rho, scan.theory_Lq; label<span class="op">=</span><span class="st">&quot;теория&quot;</span>, xlabel<span class="op">=</span><span class="st">&quot;Загрузка rho&quot;</span>,</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    ylabel<span class="op">=</span><span class="st">&quot;Средняя длина очереди&quot;</span>, title<span class="op">=</span><span class="st">&quot;Рост очереди при rho → 1&quot;</span>,</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), marker<span class="op">=:</span>circle)</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(p1, scan.rho, scan.simulation_Lq; label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>, marker<span class="op">=:</span>diamond)</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;load_curve.png&quot;</span>))</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">plot</span>(scan.rho, scan.simulation_Wq; label<span class="op">=</span><span class="st">&quot;Wq&quot;</span>, xlabel<span class="op">=</span><span class="st">&quot;Загрузка rho&quot;</span>,</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>    ylabel<span class="op">=</span><span class="st">&quot;Среднее ожидание&quot;</span>, title<span class="op">=</span><span class="st">&quot;Задержка в зависимости от нагрузки&quot;</span>,</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), marker<span class="op">=:</span>circle, color<span class="op">=:</span>red)</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;wait_curve.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.4</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    left_margin<span class="op">=</span><span class="fl">5</span> <span class="op">*</span> Plots.mm)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(scan.rho, scan.theory_Lq; label<span class="op">=</span><span class="st">&quot;теория&quot;</span>, xlabel<span class="op">=</span><span class="st">&quot;Загрузка rho&quot;</span>,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    ylabel<span class="op">=</span><span class="st">&quot;Средняя длина очереди&quot;</span>, title<span class="op">=</span><span class="st">&quot;Рост очереди при rho → 1&quot;</span>,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), marker<span class="op">=:</span>circle)</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(p1, scan.rho, scan.simulation_Lq; label<span class="op">=</span><span class="st">&quot;моделирование&quot;</span>, marker<span class="op">=:</span>diamond)</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;load_curve.png&quot;</span>))</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">plot</span>(scan.rho, scan.simulation_Wq; label<span class="op">=</span><span class="st">&quot;Wq&quot;</span>, xlabel<span class="op">=</span><span class="st">&quot;Загрузка rho&quot;</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>    ylabel<span class="op">=</span><span class="st">&quot;Среднее ожидание&quot;</span>, title<span class="op">=</span><span class="st">&quot;Задержка в зависимости от нагрузки&quot;</span>,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), marker<span class="op">=:</span>circle, color<span class="op">=:</span>red)</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;wait_curve.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
 <pre>=== Нагрузочный эксперимент M/M/1 ===
+
 <span class="ansi-bold">7×6 DataFrame</span>
+
 <span class="ansi-bold"> Row </span>│<span class="ansi-bold"> lambda  </span><span class="ansi-bold"> rho      </span><span class="ansi-bold"> theory_Lq </span><span class="ansi-bold"> simulation_Lq </span><span class="ansi-bold"> simulation_Wq </span><span class="ansi-bold"> utilization </span>
+
 <span class="ansi-bold">     </span>│<span class="ansi-bright-black-fg"> Float64 </span><span class="ansi-bright-black-fg"> Float64  </span><span class="ansi-bright-black-fg"> Float64   </span><span class="ansi-bright-black-fg"> Float64       </span><span class="ansi-bright-black-fg"> Float64       </span><span class="ansi-bright-black-fg"> Float64     </span>
+
 ─────┼─────────────────────────────────────────────────────────────────────────
+
    1 │    10.0  0.30303    0.131752       0.131351      0.0131508     0.303057
+
    2 │    20.0  0.606061   0.932401       0.919864      0.0460839     0.604814
+
    3 │    25.0  0.757576   2.36742        2.35017       0.0940275     0.756256
+
    4 │    28.0  0.848485   4.75152        4.71503       0.168194      0.847978
+
    5 │    30.0  0.909091   9.09091        9.09158       0.302779      0.909577
+
    6 │    31.5  0.954545  20.0455        20.2187        0.64219       0.953636
+
    7 │    32.5  0.984848  64.0152        65.3523        2.0059        0.985195
 </pre>
 </div>
