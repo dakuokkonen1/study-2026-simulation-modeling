@@ -9,8 +9,8 @@
 |---:|---|---|
 | 1 | Подготовка стенда. Модель экспоненциального роста | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab01) |
 | 2 | Модели SIR и Лотки–Вольтерры | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab02) |
-| 3 | Система массового обслуживания M/M/1 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab03) |
-| 4 | TCP/Reno и активное управление очередью RED | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab04) |
+| 3 | Daisyworld: агентная модель саморегуляции | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab03) |
+| 4 | Агентная модель SIR | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab04) |
 | 5 | Сети Петри. Задача обедающих философов | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab05) |
 | 6 | Лабораторная работа № 6 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab06) |
 | 7 | Лабораторная работа № 7 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab07) |
