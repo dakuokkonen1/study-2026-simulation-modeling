@@ -13,7 +13,7 @@
 | 4 | Агентная модель SIR | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab04) |
 | 5 | Сети Петри. Задача обедающих философов | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab05) |
 | 6 | Модель SIR в подходе сетей Петри | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab06) |
-| 7 | Лабораторная работа № 7 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab07) |
+| 7 | Дискретно-событийные модели: M/M/c и система Росса | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab07) |
 | 8 | Лабораторная работа № 8 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab08) |
 
 Материалы распространяются на условиях [**GNU General Public License v3.0**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/LICENSE).
