@@ -1,6 +1,6 @@
 OUTPUT := _output
 SOURCE := simulation-modeling-lab04-report.qmd
-SOFFICE ?= soffice
+SOFFICE ?= soffice -env:UserInstallation=file:///tmp/libreoffice-lab04-report
 FINAL_DOCX := simulation-modeling-lab04-report.docx
 FINAL_PDF := simulation-modeling-lab04-report.pdf
 

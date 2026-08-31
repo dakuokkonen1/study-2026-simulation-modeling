@@ -42,7 +42,7 @@ TCP/Reno и активного управления очередью RED в мн
 
 Выполнены следующие задачи:
 
-1. построена схема с 25 источниками, двумя маршрутизаторами и узким местом;
+1. задана агрегированная модель 25 потоков, общего RTT и узкого места;
 2. реализованы медленный старт, аддитивное увеличение и мультипликативное
    уменьшение окна TCP;
 3. реализовано экспоненциальное сглаживание очереди и ранний сброс RED;
@@ -80,8 +80,12 @@ p_{max}, & \bar q\ge q_{max}.
 \end{cases}
 $$ {#eq-red}
 
-За счёт (@eq-ewma) алгоритм не реагирует на единичные всплески, но начинает
-сигнализировать о перегрузке до заполнения физического буфера.
+Сглаживание (@eq-ewma) ослабляет влияние отдельных всплесков очереди.
+В данной учебной реализации вероятность насыщается на $p_{max}$ выше
+$q_{max}$, а не становится единицей, как в классическом варианте RED.
+Модель показывает обратную связь между очередью и окнами, но не воспроизводит
+полный пакетный стек TCP/Reno: нет ACK, таймеров повторной передачи,
+fast recovery и отдельных линий доступа.
 
 Кусочно-линейная функция вероятности вынесена в общий модуль и непосредственно
 проверяется модульными тестами.
@@ -90,8 +94,7 @@ $$ {#eq-red}
 function red_probability(qavg::Real, red::REDParameters)
     qavg < red.qmin && return 0.0
     qavg >= red.qmax && return red.pmax
-    return red.pmax *
-        (qavg - red.qmin) / (red.qmax - red.qmin)
+    return red.pmax * (qavg - red.qmin) / (red.qmax - red.qmin)
 end
 ```
 
@@ -115,17 +118,59 @@ end
 
 ![Состав Julia-проекта и закреплённые зависимости](../image/02-terminal.png){#fig-lab04-tree width=92%}
 
+## Типы данных и интерфейс модуля
+
+```julia
+module TCPRED
+
+using Random
+using Statistics
+
+export REDParameters, NetworkParameters, TCPREDResult, red_probability, simulate_tcp_red
+
+Base.@kwdef struct REDParameters
+    qmin::Float64 = 75.0
+    qmax::Float64 = 150.0
+    weight::Float64 = 0.002
+    pmax::Float64 = 0.1
+    limit::Float64 = 300.0
+end
+
+Base.@kwdef struct NetworkParameters
+    flows::Int = 25
+    capacity_bps::Float64 = 20e6
+    packet_bytes::Int = 500
+    propagation_rtt::Float64 = 0.118
+    duration::Float64 = 30.0
+    dt::Float64 = 0.002
+end
+
+struct TCPREDResult
+    time::Vector{Float64}
+    cwnd_first::Vector{Float64}
+    cwnd_mean::Vector{Float64}
+    queue::Vector{Float64}
+    average_queue::Vector{Float64}
+    drop_probability::Vector{Float64}
+    throughput_mbps::Vector{Float64}
+    losses::Int
+    delivered_packets::Float64
+end
+```
+
+Листинг 2 — Объявления модуля и типы данных из `src/tcp_red.jl`
+
 # Структура модели
 
-Моделируется «гантелеобразная» топология: источники подключены к первому
-маршрутизатору быстрыми линиями, между маршрутизаторами находится узкое место,
-после второго маршрутизатора трафик поступает получателям.
+Учебной постановке соответствует «гантелеобразная» топология: потоки разделяют
+одно узкое место между маршрутизаторами. В программе она представлена общей
+очередью, скоростью обслуживания и базовым RTT. Отдельные маршрутизаторы и
+линии доступа не являются самостоятельными объектами симуляции.
 
 | Параметр | Значение |
 |---|---:|
 | Число TCP/Reno-потоков | 25 |
 | Пропускная способность узкого места | 20 Мбит/с |
-| Задержка линии между маршрутизаторами | 15 мс |
 | Размер пакета | 500 байт |
 | Базовый RTT | 118 мс |
 | Буфер | 300 пакетов |
@@ -133,6 +178,7 @@ end
 | $w_q$ | 0,002 |
 | $p_{max}$ | 0,1 |
 | Время моделирования | 30 с |
+| Шаг времени | 0,002 с |
 
 : Параметры базового эксперимента {#tbl-params}
 
@@ -141,54 +187,173 @@ end
 обслуживаются с физической скоростью линии. Для каждого потока независимо
 разыгрывается сигнал RED.
 
-```julia
-rtt = propagation_rtt + queue / service_rate
-sent = cwnd ./ rtt .* dt
-p = red_probability(qavg, red)
+Структуры `NetworkParameters` и `REDParameters` задают параметры с именованными
+значениями по умолчанию. `TCPREDResult` содержит синхронизированные векторы
+окон, очереди, вероятности и throughput. Скорость обслуживания переводится
+из бит/с в пакеты/с через размер пакета: $20\cdot10^6/(8\cdot500)=5000$.
+За один шаг линия может обслужить не более десяти пакетов.
 
-if rand(rng) < 1 - (1 - p)^sent[i]
-    cwnd[i] = max(cwnd[i] / 2, 1.0)
-else
-    cwnd[i] += dt / rtt
+```julia
+function simulate_tcp_red(; network::NetworkParameters=NetworkParameters(),
+                          red::REDParameters=REDParameters(), seed::Integer=202604)
+    network.flows > 0 || throw(ArgumentError("flows must be positive"))
+    network.dt > 0 || throw(ArgumentError("dt must be positive"))
+    network.duration > network.dt || throw(ArgumentError("duration is too short"))
+    red.qmin < red.qmax <= red.limit || throw(ArgumentError("invalid RED thresholds"))
+
+    rng = MersenneTwister(seed)
+    steps = floor(Int, network.duration / network.dt) + 1
+    time = collect(range(0.0; step=network.dt, length=steps))
+    cwnd = fill(1.0, network.flows)
+    ssthresh = fill(32.0, network.flows)
+    queue = 0.0
+    qavg = 0.0
+    losses = 0
+    delivered = 0.0
+    packet_bits = 8.0 * network.packet_bytes
+    service_rate = network.capacity_bps / packet_bits
+
+    first_history = zeros(steps)
+    mean_history = zeros(steps)
+    queue_history = zeros(steps)
+    average_history = zeros(steps)
+    probability_history = zeros(steps)
+    throughput_history = zeros(steps)
+
+    for k in eachindex(time)
+        first_history[k] = cwnd[1]
+        mean_history[k] = mean(cwnd)
+        queue_history[k] = queue
+        average_history[k] = qavg
+        p = red_probability(qavg, red)
+        probability_history[k] = p
+
+        rtt = network.propagation_rtt + queue / service_rate
+        sent = cwnd ./ rtt .* network.dt
+        arrivals = sum(sent)
+        accepted = 0.0
+
+        for i in eachindex(cwnd)
+            congestion_probability = 1 - (1 - p)^sent[i]
+            if queue >= red.limit || rand(rng) < congestion_probability
+                cwnd[i] = max(cwnd[i] / 2, 1.0)
+                ssthresh[i] = cwnd[i]
+                losses += 1
+            else
+                accepted += sent[i]
+                if cwnd[i] < ssthresh[i]
+                    cwnd[i] += sent[i]
+                else
+                    cwnd[i] += network.dt / rtt
+                end
+            end
+        end
+
+        queue = min(red.limit, queue + accepted)
+        served = min(queue, service_rate * network.dt)
+        queue -= served
+        delivered += served
+        throughput_history[k] = served * packet_bits / network.dt / 1e6
+        qavg = (1 - red.weight) * qavg + red.weight * queue
+    end
+
+    return TCPREDResult(time, first_history, mean_history, queue_history,
+        average_history, probability_history, throughput_history, losses, delivered)
 end
 ```
 
-Листинг 2 — Обновление окна одного TCP-потока в `src/tcp_red.jl`
+Листинг 3 — Полная функция моделирования TCP/RED из `src/tcp_red.jl`
+
+В начале шага сохраняется состояние, вычисляются RTT и объём отправки каждого
+потока. Величина `sent[i]` вещественная: это агрегированный объём трафика за
+шаг, а не отдельные дискретные пакеты. Сигнал перегрузки разыгрывается с
+вероятностью `1 - (1 - p)^sent[i]`. Он уменьшает окно вдвое и меняет порог
+slow start; без сигнала окно растёт по правилу соответствующей фазы.
+
+Принятый объём добавляется в буфер, ограничивается `red.limit`, затем
+обслуживается линией. После обслуживания обновляется EWMA. Счётчик `losses`
+считает сигналы для потоков за весь прогон, а не число отброшенных пакетов;
+объём, срезанный ограничением буфера, отдельно в нём не учитывается.
+Очередь и окна в строке истории относятся к началу шага, throughput — к
+обслуживанию на этом шаге. Цикл включает и отсчёт при $t=30$ с, то есть
+выполняет 15001 обновление; для точного баланса по горизонту это соглашение
+следовало бы отдельно уточнить. В работе анализируются средние сохранённых
+отсчётов, а не измерения реальной сети.
 
 # Базовый эксперимент
 
-После переходного процесса средние показатели составили:
+Базовый сценарий записывает полную траекторию, затем вычисляет средние по
+отсчётам с $t\ge10$ с. Первые десять секунд исключены только из усреднения
+окна, очередей и throughput. Сигналы потери подсчитаны за весь прогон.
 
 ```julia
-network = NetworkParameters(
-    flows=25,
-    capacity_bps=20e6,
-    packet_bytes=500,
-    propagation_rtt=0.118,
-    duration=30.0,
-    dt=0.002,
-)
-red = REDParameters(
-    qmin=75.0,
-    qmax=150.0,
-    weight=0.002,
-    pmax=0.1,
-    limit=300.0,
-)
+# # TCP/Reno и очередь RED
+#
+# **Цель:** исследовать окно перегрузки TCP/Reno и состояние очереди RED в
+# многопоточной сети с узким местом 20 Мбит/с.
+
+using DrWatson
+@quickactivate "project"
+ENV["GKSwstype"] = "100"
+using CSV, DataFrames, Plots, Statistics
+include(srcdir("tcp_red.jl"))
+using .TCPRED
+
+name = "01_tcp_red"
+mkpath(datadir(name)); mkpath(plotsdir(name))
+network = NetworkParameters(flows=25, capacity_bps=20e6, packet_bytes=500,
+    propagation_rtt=0.118, duration=30.0, dt=0.002)
+red = REDParameters(qmin=75.0, qmax=150.0, weight=0.002, pmax=0.1, limit=300.0)
 result = simulate_tcp_red(; network, red, seed=202604)
 
-trajectory = DataFrame(
-    time=result.time,
-    cwnd_first=result.cwnd_first,
-    cwnd_mean=result.cwnd_mean,
-    queue=result.queue,
-    average_queue=result.average_queue,
-    drop_probability=result.drop_probability,
-    throughput_mbps=result.throughput_mbps,
-)
+trajectory = DataFrame(time=result.time, cwnd_first=result.cwnd_first,
+    cwnd_mean=result.cwnd_mean, queue=result.queue,
+    average_queue=result.average_queue, drop_probability=result.drop_probability,
+    throughput_mbps=result.throughput_mbps)
+CSV.write(datadir(name, "trajectory.csv"), trajectory)
+
+warm = trajectory.time .>= 10.0
+summary = DataFrame(metric=["mean_cwnd", "mean_queue", "mean_average_queue",
+    "mean_throughput_mbps", "loss_events"],
+    value=[mean(trajectory.cwnd_mean[warm]), mean(trajectory.queue[warm]),
+        mean(trajectory.average_queue[warm]), mean(trajectory.throughput_mbps[warm]),
+        result.losses])
+CSV.write(datadir(name, "summary.csv"), summary)
+println("=== TCP/Reno + RED: базовый эксперимент ===")
+println("Потоков: $(network.flows), узкое место: $(network.capacity_bps/1e6) Мбит/с")
+show(summary; allrows=true, allcols=true); println()
+
+default(fontfamily="DejaVu Sans", linewidth=2.2, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
+p1 = plot(trajectory.time, trajectory.cwnd_first; label="первый поток",
+    xlabel="Время, с", ylabel="cwnd, пакеты", title="Окно перегрузки TCP/Reno",
+    size=(1000,620), color=:blue)
+plot!(p1, trajectory.time, trajectory.cwnd_mean; label="среднее по потокам", color=:black)
+savefig(p1, plotsdir(name, "cwnd.png"))
+
+p2 = plot(trajectory.time, trajectory.queue; label="мгновенная очередь",
+    xlabel="Время, с", ylabel="Пакеты", title="Очередь RED на узком месте",
+    size=(1000,620), color=:orange)
+plot!(p2, trajectory.time, trajectory.average_queue; label="EWMA", color=:red)
+hline!(p2, [red.qmin, red.qmax]; label=["qmin" "qmax"], linestyle=:dash)
+savefig(p2, plotsdir(name, "red_queue.png"))
+
+p3 = plot(trajectory.time, trajectory.drop_probability; label="p(t)",
+    xlabel="Время, с", ylabel="Вероятность", title="Вероятность раннего сброса RED",
+    size=(1000,620), color=:purple)
+savefig(p3, plotsdir(name, "drop_probability.png"))
+
+p4 = plot(trajectory.time, trajectory.throughput_mbps; label="пропускная способность",
+    xlabel="Время, с", ylabel="Мбит/с", title="Использование узкого места",
+    size=(1000,620), color=:green)
+hline!(p4, [network.capacity_bps/1e6]; label="20 Мбит/с", linestyle=:dash, color=:black)
+savefig(p4, plotsdir(name, "throughput.png"))
+
+# RED реагирует на сглаженную длину очереди, а TCP/Reno отвечает на потери
+# мультипликативным уменьшением окна, формируя характерную пилообразную кривую.
 ```
 
-Листинг 3 — Базовый сценарий в `scripts/01_tcp_red.jl`
+Листинг 4 — Полный сценарий базового эксперимента из `scripts/01_tcp_red.jl`
 
 | Показатель | Значение |
 |---|---:|
@@ -199,6 +364,13 @@ trajectory = DataFrame(
 | Число сигналов потери | 446 |
 
 : Результаты базового эксперимента {#tbl-base}
+
+Файлы `trajectory.csv` и `summary.csv` сохраняются в `data/01_tcp_red`.
+Четыре графика строятся по одной и той же траектории: окно первого потока и
+среднее окно, мгновенная очередь с EWMA, вероятность сигнала и throughput.
+Горизонтальные линии показывают пороги RED и ёмкость канала. Число
+$18{,}7654/20\cdot100\%=93{,}83\%$ характеризует использование узкого места
+на выбранном интервале усреднения.
 
 Окно первого потока демонстрирует характерную пилообразную динамику AIMD:
 плавный рост чередуется с быстрым делением пополам. Усреднение по потокам
@@ -225,32 +397,60 @@ trajectory = DataFrame(
 отдельное фиксированное начальное число генератора.
 
 ```julia
+# # Влияние числа TCP-потоков
+#
+# **Цель:** оценить загрузку узкого места и состояние RED при изменении числа
+# конкурентных соединений.
+
+using DrWatson
+@quickactivate "project"
+ENV["GKSwstype"] = "100"
+using CSV, DataFrames, Plots, Statistics
+include(srcdir("tcp_red.jl"))
+using .TCPRED
+
+name = "02_flow_scan"
+mkpath(datadir(name)); mkpath(plotsdir(name))
+red = REDParameters()
 rows = NamedTuple[]
 for flows in [5, 10, 15, 20, 25, 30, 40]
-    net = NetworkParameters(
-        flows=flows,
-        duration=30.0,
-        dt=0.002,
-    )
-    result = simulate_tcp_red(
-        network=net,
-        red=REDParameters(),
-        seed=202604 + flows,
-    )
+    net = NetworkParameters(flows=flows, duration=30.0, dt=0.002)
+    result = simulate_tcp_red(; network=net, red, seed=202604 + flows)
     warm = result.time .>= 10.0
-    push!(rows, (
-        flows=flows,
+    push!(rows, (flows=flows,
         throughput_mbps=mean(result.throughput_mbps[warm]),
         mean_queue=mean(result.queue[warm]),
         mean_cwnd=mean(result.cwnd_mean[warm]),
-        loss_events=result.losses,
-    ))
+        loss_events=result.losses))
 end
+scan = DataFrame(rows)
+CSV.write(datadir(name, "flow_scan.csv"), scan)
+println("=== Сканирование числа TCP-потоков ===")
+show(scan; allrows=true, allcols=true); println()
+
+default(fontfamily="DejaVu Sans", linewidth=2.3, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
+p1 = plot(scan.flows, scan.throughput_mbps; marker=:circle, label="throughput",
+    xlabel="Число потоков", ylabel="Мбит/с", title="Загрузка узкого места",
+    size=(1000,620))
+hline!(p1, [20.0]; label="ёмкость 20 Мбит/с", linestyle=:dash, color=:black)
+savefig(p1, plotsdir(name, "flow_throughput.png"))
+
+p2 = plot(scan.flows, scan.mean_queue; marker=:diamond, label="средняя очередь",
+    xlabel="Число потоков", ylabel="Пакеты", title="Очередь при росте конкуренции",
+    size=(1000,620), color=:red)
+hline!(p2, [red.qmin, red.qmax]; label=["qmin" "qmax"], linestyle=:dash)
+savefig(p2, plotsdir(name, "flow_queue.png"))
+
+# С ростом числа потоков узкое место насыщается, а RED удерживает очередь в
+# ограниченном диапазоне и сигнализирует TCP до переполнения буфера.
 ```
 
-Листинг 4 — Эксперимент по числу потоков в `scripts/02_flow_scan.jl`
+Листинг 5 — Полный сценарий эксперимента по числу потоков из `scripts/02_flow_scan.jl`
 
-| Потоки | Throughput, Мбит/с | Средняя очередь | Среднее окно | Потери |
+{{< pagebreak >}}
+
+| Потоки | Throughput, Мбит/с | Средняя очередь | Среднее окно | Сигналы |
 |---:|---:|---:|---:|---:|
 | 5 | 19,7009 | 38,3260 | 124,0190 | 10 |
 | 10 | 19,6181 | 45,3713 | 62,4388 | 53 |
@@ -265,7 +465,14 @@ end
 ![Использование узкого места при разном числе потоков](../image/05-plot.png){#fig-flow-throughput width=88%}
 
 С ростом конкуренции индивидуальное окно уменьшается, а число сигналов потери
-растёт. RED удерживает среднюю очередь существенно ниже предела 300 пакетов.
+растёт. Средние очереди в этих прогонах существенно ниже предела 300 пакетов.
+Сам предел обеспечивается ограничением буфера в коде; без сравнения с режимом
+без RED нельзя приписать весь эффект только раннему сбросу.
+
+Для каждого числа потоков выполнен один прогон с seed `202604 + flows`.
+Поэтому точка 25 потоков в серии не совпадает с базовым опытом с seed 202604:
+здесь throughput равен 18,4514 Мбит/с, а число сигналов — 456.
+Разброс между повторными реализациями и доверительные интервалы не оценивались.
 
 ![Средняя очередь при разном числе потоков](../image/06-plot.png){#fig-flow-queue width=88%}
 
@@ -276,26 +483,22 @@ end
 фактические сводки базового и параметрического экспериментов.
 
 ```julia
+using DrWatson
+@quickactivate "project"
+using Literate
+
 function generate_formats(source::AbstractString)
     name = splitext(basename(source))[1]
-    foreach(mkpath, (
-        scriptsdir(name),
-        projectdir("markdown", name),
-        projectdir("notebooks", name),
-    ))
-    Literate.script(source, scriptsdir(name); name, credit=false)
-    Literate.notebook(
-        source, projectdir("notebooks", name);
-        name, execute=false, credit=false,
-    )
-    Literate.markdown(
-        source, projectdir("markdown", name);
-        name, flavor=Literate.QuartoFlavor(), credit=false,
-    )
+    foreach(mkpath, (scriptsdir(name), projectdir("markdown", name), projectdir("notebooks", name)))
+    Literate.script(source, scriptsdir(name); name=name, credit=false)
+    Literate.notebook(source, projectdir("notebooks", name); name=name, execute=false, credit=false)
+    Literate.markdown(source, projectdir("markdown", name); name=name,
+        flavor=Literate.QuartoFlavor(), credit=false)
 end
+foreach(generate_formats, ARGS)
 ```
 
-Листинг 5 — Генерация производных форматов в `scripts/tangle.jl`
+Листинг 6 — Генерация производных форматов в `scripts/tangle.jl`
 
 ![Выполненный блокнот базового эксперимента TCP/Reno и RED](../image/01-jupyter.png){#fig-lab04-jupyter-base width=92%}
 
@@ -308,27 +511,74 @@ end
 доставленных пакетов и появление потерь в нагруженном режиме.
 
 ```julia
+using Test
+include(joinpath(@__DIR__, "..", "src", "tcp_red.jl"))
+using .TCPRED
+
+@testset "RED probability" begin
+    red = REDParameters()
+    @test red_probability(50.0, red) == 0.0
+    @test isapprox(red_probability(112.5, red), 0.05)
+    @test red_probability(150.0, red) == 0.1
+end
+
 @testset "TCP/RED simulation" begin
     net = NetworkParameters(flows=25, duration=12.0, dt=0.002)
     red = REDParameters()
-    r = simulate_tcp_red(network=net, red=red, seed=42)
+    r = simulate_tcp_red(; network=net, red, seed=42)
     @test length(r.time) == length(r.queue)
     @test all(0 .<= r.queue .<= red.limit)
     @test all(r.cwnd_first .>= 1.0)
     @test all(0 .<= r.drop_probability .<= red.pmax)
-    @test maximum(r.throughput_mbps) <=
-        net.capacity_bps / 1e6 + 1e-9
+    @test maximum(r.throughput_mbps) <= net.capacity_bps/1e6 + 1e-9
     @test r.delivered_packets > 0
     @test r.losses > 0
 end
 ```
 
-Листинг 6 — Проверки имитационной модели в `test/runtests.jl`
+Листинг 7 — Проверки имитационной модели в `test/runtests.jl`
 
-Все 10 проверок пройдены. Дополнительно выполнены `git diff --check` и
-контроль состава отслеживаемых файлов.
+Все 10 проверок пройдены: три проверки вероятности RED и семь проверок
+имитации. Проверяются длины массивов, диапазоны очереди, окна и вероятности,
+верхняя граница throughput, наличие обслуженного трафика и сигналов перегрузки.
+Тестовый прогон длится 12 с и использует seed 42. Эти проверки подтверждают
+перечисленные ограничения реализации, но не проверяют полный протокол TCP.
 
 ![Результат выполнения автоматических проверок](../image/03-terminal.png){#fig-lab04-tests width=92%}
+
+## Воспроизведение расчётов и сборка материалов
+
+Команды выполняются в терминале контейнера из каталога лабораторной.
+
+```bash
+cd /workspace/labs/lab04/project
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+make setup
+make all
+make test
+jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+```
+
+Листинг 8 — Восстановление окружения, расчёты и запуск JupyterLab
+
+Цель `tangle` создаёт производные исходники, `run` выполняет оба эксперимента,
+`notebooks` исполняет IPYNB, `docs` собирает вычислительные HTML-страницы,
+а `test` запускает проверки общего модуля. В JupyterLab открываются файлы
+из `notebooks`; ядро Julia устанавливается командой `make setup`.
+
+```bash
+cd /workspace/labs/lab04/report
+make all
+cd ../presentation
+make all
+```
+
+Листинг 9 — Сборка отчёта DOCX/PDF и HTML-презентации
+
+Quarto преобразует исходник отчёта в DOCX, LibreOffice создаёт PDF.
+Презентация хранится в HTML и редактируемом PPTX; `make all` пересобирает HTML
+из QMD и проверяет наличие обоих форматов. PPTX является отдельным
+редактируемым документом в принятом оформлении, а не результатом конвертации HTML.
 
 # Выводы
 
@@ -336,8 +586,10 @@ end
 место обеспечивает в среднем 18,77 Мбит/с, а очередь остаётся значительно ниже
 физического лимита. Наблюдается ожидаемая пилообразная динамика окна AIMD.
 Параметрический эксперимент показал уменьшение индивидуального окна и рост
-числа сигналов перегрузки при увеличении конкуренции, при этом RED предотвращает
-неограниченное накопление пакетов.
+числа сигналов перегрузки при увеличении конкуренции. Выводы относятся к
+агрегированной учебной модели с фиксированным шагом и упрощённым RED;
+сопоставление с пакетным симулятором и анализ чувствительности к шагу в данной
+работе не выполнялись.
 
 # Источники
 
