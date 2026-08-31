@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>flow_scan</title>
+<title>Влияние числа TCP-потоков</title>
 <style>
 
 span.smallcaps{font-variant: small-caps;}
@@ -2228,7 +2228,7 @@ vertical-align: -.125em;
 
 
 <p><strong>Цель:</strong> оценить загрузку узкого места и состояние RED при изменении числа конкурентных соединений.</p>
-<div id="2" class="cell" data-execution_count="1">
+<div id="cell-2" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-31T09:40:25.306000Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-31T09:40:25.286000Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-31T09:40:44.834000Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-31T09:40:44.833000Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DrWatson</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp">@quickactivate</span> <span class="st">&quot;project&quot;</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cn">ENV</span>[<span class="st">&quot;GKSwstype&quot;</span>] <span class="op">=</span> <span class="st">&quot;100&quot;</span></span>
@@ -2255,31 +2255,43 @@ vertical-align: -.125em;
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;=== Сканирование числа TCP-потоков ===&quot;</span>)</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="fu">show</span>(scan; allrows<span class="op">=</span><span class="cn">true</span>, allcols<span class="op">=</span><span class="cn">true</span>); <span class="fu">println</span>()</span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.3</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>)</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(scan.flows, scan.throughput_mbps; marker<span class="op">=:</span>circle, label<span class="op">=</span><span class="st">&quot;throughput&quot;</span>,</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Число потоков&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Мбит/с&quot;</span>, title<span class="op">=</span><span class="st">&quot;Загрузка узкого места&quot;</span>,</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="fu">hline!</span>(p1, [<span class="fl">20.0</span>]; label<span class="op">=</span><span class="st">&quot;ёмкость 20 Мбит/с&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;flow_throughput.png&quot;</span>))</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">plot</span>(scan.flows, scan.mean_queue; marker<span class="op">=:</span>diamond, label<span class="op">=</span><span class="st">&quot;средняя очередь&quot;</span>,</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Число потоков&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Пакеты&quot;</span>, title<span class="op">=</span><span class="st">&quot;Очередь при росте конкуренции&quot;</span>,</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), color<span class="op">=:</span>red)</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="fu">hline!</span>(p2, [red.qmin, red.qmax]; label<span class="op">=</span>[<span class="st">&quot;qmin&quot;</span> <span class="st">&quot;qmax&quot;</span>], linestyle<span class="op">=:</span>dash)</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;flow_queue.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.3</span>, framestyle<span class="op">=:</span>box, gridalpha<span class="op">=</span><span class="fl">0.22</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    left_margin<span class="op">=</span><span class="fl">5</span> <span class="op">*</span> Plots.mm)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(scan.flows, scan.throughput_mbps; marker<span class="op">=:</span>circle, label<span class="op">=</span><span class="st">&quot;throughput&quot;</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Число потоков&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Мбит/с&quot;</span>, title<span class="op">=</span><span class="st">&quot;Загрузка узкого места&quot;</span>,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>))</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="fu">hline!</span>(p1, [<span class="fl">20.0</span>]; label<span class="op">=</span><span class="st">&quot;ёмкость 20 Мбит/с&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">plotsdir</span>(name, <span class="st">&quot;flow_throughput.png&quot;</span>))</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">plot</span>(scan.flows, scan.mean_queue; marker<span class="op">=:</span>diamond, label<span class="op">=</span><span class="st">&quot;средняя очередь&quot;</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Число потоков&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Пакеты&quot;</span>, title<span class="op">=</span><span class="st">&quot;Очередь при росте конкуренции&quot;</span>,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>    size<span class="op">=</span>(<span class="fl">1000</span>,<span class="fl">620</span>), color<span class="op">=:</span>red)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">hline!</span>(p2, [red.qmin, red.qmax]; label<span class="op">=</span>[<span class="st">&quot;qmin&quot;</span> <span class="st">&quot;qmax&quot;</span>], linestyle<span class="op">=:</span>dash)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">plotsdir</span>(name, <span class="st">&quot;flow_queue.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
 <pre>=== Сканирование числа TCP-потоков ===
+
 <span class="ansi-bold">7×5 DataFrame</span>
+
 <span class="ansi-bold"> Row </span>│<span class="ansi-bold"> flows </span><span class="ansi-bold"> throughput_mbps </span><span class="ansi-bold"> mean_queue </span><span class="ansi-bold"> mean_cwnd </span><span class="ansi-bold"> loss_events </span>
+
 <span class="ansi-bold">     </span>│<span class="ansi-bright-black-fg"> Int64 </span><span class="ansi-bright-black-fg"> Float64         </span><span class="ansi-bright-black-fg"> Float64    </span><span class="ansi-bright-black-fg"> Float64   </span><span class="ansi-bright-black-fg"> Int64       </span>
+
 ─────┼────────────────────────────────────────────────────────────
+
    1 │     5          19.7009     38.326    124.019            10
+
    2 │    10          19.6181     45.3713    62.4388           53
+
    3 │    15          18.5747     41.195     39.3207          157
+
    4 │    20          18.45       47.9929    29.6584          277
+
    5 │    25          18.4514     53.3248    23.9354          456
+
    6 │    30          18.7217     63.9456    20.5946          646
+
    7 │    40          18.7592     69.0914    15.6248         1063
 </pre>
 </div>

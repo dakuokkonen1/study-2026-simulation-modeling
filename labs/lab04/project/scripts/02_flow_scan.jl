@@ -29,7 +29,8 @@ CSV.write(datadir(name, "flow_scan.csv"), scan)
 println("=== Сканирование числа TCP-потоков ===")
 show(scan; allrows=true, allcols=true); println()
 
-default(fontfamily="DejaVu Sans", linewidth=2.3, framestyle=:box, gridalpha=0.22)
+default(fontfamily="DejaVu Sans", linewidth=2.3, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
 p1 = plot(scan.flows, scan.throughput_mbps; marker=:circle, label="throughput",
     xlabel="Число потоков", ylabel="Мбит/с", title="Загрузка узкого места",
     size=(1000,620))

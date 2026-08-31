@@ -29,7 +29,8 @@ println("=== TCP/Reno + RED: базовый эксперимент ===")
 println("Потоков: $(network.flows), узкое место: $(network.capacity_bps/1e6) Мбит/с")
 show(summary; allrows=true, allcols=true); println()
 
-default(fontfamily="DejaVu Sans", linewidth=2.2, framestyle=:box, gridalpha=0.22)
+default(fontfamily="DejaVu Sans", linewidth=2.2, framestyle=:box, gridalpha=0.22,
+    left_margin=5 * Plots.mm)
 p1 = plot(trajectory.time, trajectory.cwnd_first; label="первый поток",
     xlabel="Время, с", ylabel="cwnd, пакеты", title="Окно перегрузки TCP/Reno",
     size=(1000,620), color=:blue)

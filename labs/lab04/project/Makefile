@@ -15,9 +15,11 @@ notebooks:
 	jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.kernel_name=julia-lab04-1.11 --ExecutePreprocessor.timeout=900 notebooks/01_tcp_red/01_tcp_red.ipynb
 	jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.kernel_name=julia-lab04-1.11 --ExecutePreprocessor.timeout=900 notebooks/02_flow_scan/02_flow_scan.ipynb
 
-docs:
-	quarto render markdown/01_tcp_red/01_tcp_red.qmd --to html --embed-resources
-	quarto render markdown/02_flow_scan/02_flow_scan.qmd --to html --embed-resources
+docs: notebooks
+	quarto render notebooks/01_tcp_red/01_tcp_red.ipynb --to html --embed-resources --no-execute
+	mv notebooks/01_tcp_red/01_tcp_red.html markdown/01_tcp_red/01_tcp_red.html
+	quarto render notebooks/02_flow_scan/02_flow_scan.ipynb --to html --embed-resources --no-execute
+	mv notebooks/02_flow_scan/02_flow_scan.html markdown/02_flow_scan/02_flow_scan.html
 
 test:
 	julia --project=. test/runtests.jl
