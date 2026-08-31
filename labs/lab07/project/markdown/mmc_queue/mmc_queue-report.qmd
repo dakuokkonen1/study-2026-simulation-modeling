@@ -1,0 +1,57 @@
+### Очередь M/M/c: десять клиентов
+Базовый пример §7.2.4–7.2.5, стр. 214–215. Заявки поступают в общую FIFO-очередь.
+
+```julia
+using DrWatson
+@quickactivate "project"
+include(srcdir("MMCQueue.jl"))
+using .MMCQueue
+include(srcdir("experiment_support.jl"))
+```
+
+#### Исходные параметры и события
+Интенсивности: λ=.9, μ=.5; среднее обслуживание равно двум единицам времени.
+Моменты прибытия генерируются до запуска календаря, как в примере практикума.
+
+```julia
+result = simulate_mmc(num_customers=10, num_servers=2, λ=.9, μ=.5, seed=123, verbose=true)
+save_table("mmc_customers.csv", result.customers)
+save_table("mmc_events.csv", result.events)
+result.customers
+```
+
+#### Наблюдаемые характеристики короткого прогона
+Это запуск из пустого состояния, а не точная оценка стационарного режима.
+
+```julia
+observed = DataFrame([queue_summary(result)])
+save_table("mmc_summary.csv", observed)
+observed
+```
+
+#### Очередь и занятые каналы
+
+```julia
+p_events = queue_plot(result.events; title="M/M/2: 10 customers, lambda=0.9, mu=0.5")
+savefig(p_events, imagepath("01-plot.png"))
+display(p_events)
+```
+
+#### Время ожидания и обслуживания каждого клиента
+
+```julia
+p_clients = customer_timeline(result.customers)
+savefig(p_clients, imagepath("02-plot.png"))
+display(p_clients)
+```
+
+#### Аналитический ориентир
+ρ=.9<1: стационарные формулы существуют. Для содержательного сравнения
+используется длинная параметрическая серия, а не только эти десять клиентов.
+
+```julia
+theory = DataFrame([erlang_c(.9, .5, 2)])
+save_table("mmc_theory.csv", theory)
+theory
+```
+

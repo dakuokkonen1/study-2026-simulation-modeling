@@ -1,0 +1,96 @@
+# Система Росса: несколько ремонтников и разное число машин
+Дополнительные задания §7.3.4 и параметрическая серия §7.4.
+
+```{julia}
+using DrWatson
+@quickactivate "project"
+include(srcdir("RossRepair.jl"))
+using .RossRepair
+include(srcdir("experiment_support.jl"))
+```
+
+## План независимых повторов
+
+```{julia}
+machine_counts, repairer_counts = [5,10,20], [1,2,3]
+spares, replications = 3, 200
+failure_mean, repair_mean = 100.0, 1.0
+replicates, comparisons = NamedTuple[], NamedTuple[]
+```
+
+## Моделирование и решение поглощающей марковской цепи
+Для каждого сочетания — отдельные независимые seed. Все траектории выполняются
+теми же процессами ConcurrentSim; отключается только сохранение длинного журнала.
+
+```{julia}
+for (index,(N,r)) in enumerate(Iterators.product(machine_counts,repairer_counts))
+    rows = NamedTuple[]
+    for replication in 1:replications
+        seed = 710000+1000*index+replication
+        result = simulate_repair(; N, S=spares, repairers=r, failure_mean, repair_mean,
+            seed, record_events=false)
+        push!(rows,merge((experiment=index,replication=replication,seed=seed),result.summary))
+    end
+    append!(replicates,rows)
+    sample = DataFrame(rows)
+    estimate = mean_interval(sample.crash_time)
+    theory = analytic_repair(;N,S=spares,repairers=r,failure_mean,repair_mean)
+    push!(comparisons,(experiment=index,N=N,S=spares,repairers=r,replications=replications,
+        mean_time=estimate.mean,se=estimate.se,ci_low=estimate.ci_low,ci_high=estimate.ci_high,
+        theory_time=theory.mean_time,relative_error=(estimate.mean/theory.mean_time-1),
+        ci_contains_theory=estimate.ci_low<=theory.mean_time<=estimate.ci_high,
+        utilization=sum(sample.area_busy)/(r*sum(sample.crash_time)),theory_utilization=theory.utilization,
+        mean_queue=sum(sample.area_queue)/sum(sample.crash_time),theory_queue=theory.mean_queue))
+    println("N=$N, repairers=$r, runs=$replications, mean=$(round(estimate.mean;digits=2)) h")
+end
+results, comparison = DataFrame(replicates),DataFrame(comparisons)
+save_table("ross_param_replicates.csv",results)
+save_table("ross_param_comparison.csv",comparison)
+select(comparison,:N,:repairers,:mean_time,:se,:ci_low,:ci_high,:theory_time,:relative_error,:ci_contains_theory)
+```
+
+## Время до аварии: среднее, интервал и аналитика
+
+```{julia}
+p_time=plot(;xlabel="Working machines N",ylabel="Mean crash time (h), log scale",
+    yscale=:log10,title="Cold spares S=3: effect of repair capacity")
+for (index,r) in enumerate(repairer_counts)
+    rows=filter(:repairers=>==(r),comparison)
+    color=[:royalblue,:seagreen,:darkorange][index]
+    plot!(p_time,rows.N,rows.mean_time; yerror=(rows.mean_time-rows.ci_low,rows.ci_high-rows.mean_time),
+        color,marker=:circle,label="DES, r=$r; 95% CI")
+    plot!(p_time,rows.N,rows.theory_time;color,linestyle=:dash,label="CTMC, r=$r")
+end
+savefig(p_time,imagepath("09-plot.png"))
+display(p_time)
+```
+
+## Интегральная загрузка и очередь ремонта
+
+```{julia}
+p_util=plot(;xlabel="Working machines N",ylabel="Utilization per repairer",title="Time-weighted repair load")
+p_queue=plot(;xlabel="Working machines N",ylabel="Mean repair queue",title="Waiting machines")
+for (index,r) in enumerate(repairer_counts)
+    rows=filter(:repairers=>==(r),comparison)
+    color=[:royalblue,:seagreen,:darkorange][index]
+    plot!(p_util,rows.N,rows.utilization;color,marker=:circle,label="DES r=$r")
+    plot!(p_util,rows.N,rows.theory_utilization;color,linestyle=:dash,label="CTMC r=$r")
+    plot!(p_queue,rows.N,rows.mean_queue;color,marker=:circle,label="DES r=$r")
+    plot!(p_queue,rows.N,rows.theory_queue;color,linestyle=:dash,label="CTMC r=$r")
+end
+p_monitor=plot(p_util,p_queue;layout=(1,2),size=(1200,600))
+savefig(p_monitor,imagepath("10-plot.png"))
+display(p_monitor)
+select(comparison,:N,:repairers,:utilization,:theory_utilization,:mean_queue,:theory_queue)
+```
+
+## Проверка утверждения о числе резервных машин
+Это аналитическое дополнение, не ещё одна имитационная серия.
+
+```{julia}
+reserve_check=DataFrame([(N=10,S=S,repairers=1,mean_time=analytic_repair(S=S).mean_time,
+    recurrence=one_repair_mean(10,S,100.0,1.0)) for S in 0:5])
+save_table("ross_reserve_analytic.csv",reserve_check)
+reserve_check
+```
+

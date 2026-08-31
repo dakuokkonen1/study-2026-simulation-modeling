@@ -1,0 +1,9 @@
+lang: ru-RU
+jupyter: julia-lab07-1.11
+execute:
+  timeout: 7200
+  cache: false
+format:
+  html:
+    embed-resources: true
+    toc: true
