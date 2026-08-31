@@ -1,0 +1,17 @@
+# # Daisyworld: изменение светимости
+#
+# Сценарий ramp: рост на шагах 201–400, снижение на 501–750.
+#
+# ## Окружение и модель
+using DrWatson
+@quickactivate "project"
+include(srcdir("experiments.jl"))
+
+# ## Расчёт четырёх связанных величин
+model = daisyworld(; solar_luminosity = 1.0, scenario = :ramp)
+df = savehistory(history(model, 1000), "daisyworld-luminosity")
+# ## Численность, температура, светимость и альбедо
+figure = dynamicsfigure(df)
+save(imagefile("05-plot.png"), figure)
+display(figure)
+df[[1, 201, 401, 501, 751, 1001], :]

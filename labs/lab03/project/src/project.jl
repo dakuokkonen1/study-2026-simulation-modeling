@@ -1,5 +1,1 @@
-module project
-
-include("queueing_models.jl")
-
-end
+module project end

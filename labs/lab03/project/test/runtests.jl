@@ -1,22 +1,44 @@
-using Test
-include(joinpath(@__DIR__, "..", "src", "queueing_models.jl"))
-using .QueueingModels
+using Test, Agents
+include("../src/daisyworld.jl")
+using .DaisyworldModel
 
-@testset "M/M/1 formulas" begin
-    t = theoretical_mm1(3.0, 5.0)
-    @test t.rho == 0.6
-    @test isapprox(t.mean_system, 1.5)
-    @test isapprox(t.mean_queue, 0.9)
-    @test isapprox(t.mean_sojourn, 0.5)
-    @test_throws ArgumentError theoretical_mm1(5.0, 5.0)
+@testset "Daisyworld: initial state and constraints" begin
+    m = daisyworld()
+    @test measure(m).white == 180
+    @test measure(m).black == 180
+    @test length(unique(a.pos for a in allagents(m))) == nagents(m)
+    @test all(isfinite, m.temperature)
+    @test_throws ArgumentError daisyworld(
+        init_white = 0.9,
+        init_black = 0.2,
+    )
+    @test_throws ArgumentError daisyworld(max_age = 0)
+    @test_throws ArgumentError daisyworld(griddims = (2, 2))
 end
-
-@testset "M/M/1 simulation" begin
-    r = simulate_mm1(3.0, 5.0; horizon=20_000.0, seed=42)
-    @test r.arrivals >= r.served
-    @test r.lost == 0
-    @test abs(r.utilization - 0.6) < 0.03
-    @test abs(r.mean_system - 1.5) < 0.15
-    @test all(>=(0), r.queue_lengths)
-    @test all(>=(0), r.waits)
+@testset "Daisyworld: dynamics and reproducibility" begin
+    a, b = daisyworld(seed = 165), daisyworld(seed = 165)
+    advance!(a, 45)
+    advance!(b, 45)
+    @test measure(a) == measure(b)
+    @test a.temperature == b.temperature
+    @test a.tick == 45
+    @test nagents(a) <= 900
+    @test 0 <= measure(a).albedo <= 1
+    @test all(x -> x.age < a.max_age, allagents(a))
+    empty = daisyworld(init_white = 0.0, init_black = 0.0)
+    advance!(empty, 10)
+    @test nagents(empty) == 0
+end
+@testset "Daisyworld: prescribed solar schedule" begin
+    m = daisyworld(scenario = :ramp, init_white = 0.0, init_black = 0.0)
+    advance!(m, 200)
+    @test m.solar_luminosity ≈ 1.0
+    advance!(m, 200)
+    @test m.solar_luminosity ≈ 2.0
+    advance!(m, 100)
+    @test m.solar_luminosity ≈ 2.0
+    advance!(m, 250)
+    @test m.solar_luminosity ≈ 1.375
+    advance!(m, 250)
+    @test m.solar_luminosity ≈ 1.375
 end

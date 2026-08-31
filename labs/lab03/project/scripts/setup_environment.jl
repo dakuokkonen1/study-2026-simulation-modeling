@@ -1,6 +1,7 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
 Pkg.instantiate()
+Pkg.precompile()
+
 using IJulia
-IJulia.installkernel("Julia lab03 1.11", "--project=$(abspath(joinpath(@__DIR__, "..")))";
-    specname="julia-lab03-1.11")
+IJulia.installkernel("Julia", "--project=$(dirname(Base.active_project()))";
+    env=Dict("JULIA_DEPOT_PATH"=>join(DEPOT_PATH, ':')))
