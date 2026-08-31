@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>dining_philosophers</title>
+<title>comparative_report</title>
 <style>
 
 span.smallcaps{font-variant: small-caps;}
@@ -2210,7 +2210,7 @@ vertical-align: -.125em;
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Обедающие философы: базовый эксперимент</h1>
+<h1 class="title">Сравнительный анализ сохранённых траекторий</h1>
 </div>
 
 
@@ -2227,160 +2227,91 @@ vertical-align: -.125em;
 </header>
 
 
-<p><strong>Цель:</strong> сопоставить классическую сеть Петри и сеть с арбитром для пяти философов, проверить появление взаимной блокировки и сравнить стохастическую траекторию с непрерывной аппроксимацией.</p>
+<p>Этот сценарий не запускает модель заново. Входные CSV должны быть получены базовым экспериментом <code>01_dining_philosophers.jl</code>.</p>
 <div id="2" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DrWatson</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp">@quickactivate</span> <span class="st">&quot;project&quot;</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cn">ENV</span>[<span class="st">&quot;GKSwstype&quot;</span>] <span class="op">=</span> <span class="st">&quot;100&quot;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">CSV</span>, <span class="bu">DataFrames</span>, <span class="bu">Plots</span>, <span class="bu">Random</span>, <span class="bu">Statistics</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">CSV</span>, <span class="bu">DataFrames</span>, <span class="bu">Plots</span>, <span class="bu">Statistics</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="fu">srcdir</span>(<span class="st">&quot;dining_philosophers.jl&quot;</span>))</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">.DiningPhilosophers</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<section id="параметры-эксперимента" class="level2">
-<h2 class="anchored" data-anchor-id="параметры-эксперимента">Параметры эксперимента</h2>
-<p>Пять философов используют одинаковые интенсивности переходов.</p>
+<section id="загрузка-ранее-полученных-данных" class="level2">
+<h2 class="anchored" data-anchor-id="загрузка-ранее-полученных-данных">Загрузка ранее полученных данных</h2>
 <div id="4" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> N <span class="op">=</span> <span class="fl">5</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> TMAX <span class="op">=</span> <span class="fl">50.0</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> RATES <span class="op">=</span> <span class="fu">default_rates</span>(N; left_rate<span class="op">=</span><span class="fl">2.0</span>, right_rate<span class="op">=</span><span class="fl">1.0</span>, release_rate<span class="op">=</span><span class="fl">1.4</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> INPUT_DIR <span class="op">=</span> <span class="fu">datadir</span>(<span class="st">&quot;01_dining_philosophers&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> OUTPUT_DIR <span class="op">=</span> <span class="fu">datadir</span>(<span class="st">&quot;04_comparative_report&quot;</span>)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> IMAGE_DIR <span class="op">=</span> <span class="fu">projectdir</span>(<span class="st">&quot;..&quot;</span>, <span class="st">&quot;image&quot;</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> DATA_DIR <span class="op">=</span> <span class="fu">datadir</span>(<span class="st">&quot;01_dining_philosophers&quot;</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">mkpath</span>(IMAGE_DIR)</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">mkpath</span>(DATA_DIR)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>classic_file <span class="op">=</span> <span class="fu">joinpath</span>(INPUT_DIR, <span class="st">&quot;classical_trajectory.csv&quot;</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>arbiter_file <span class="op">=</span> <span class="fu">joinpath</span>(INPUT_DIR, <span class="st">&quot;arbiter_trajectory.csv&quot;</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> file <span class="kw">in</span> (classic_file, arbiter_file)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">isfile</span>(file) <span class="op">||</span> <span class="fu">error</span>(<span class="st">&quot;Сначала выполните базовый эксперимент: отсутствует </span><span class="sc">$</span>(<span class="fu">basename</span>(file))<span class="st">&quot;</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>classical <span class="op">=</span> CSV.<span class="fu">read</span>(classic_file, DataFrame)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>arbiter <span class="op">=</span> CSV.<span class="fu">read</span>(arbiter_file, DataFrame)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">mkpath</span>(OUTPUT_DIR)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">mkpath</span>(IMAGE_DIR)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/project/data/01_dining_philosophers&quot;</code></pre>
+<pre><code>&quot;/workspace/labs/lab05/project/../image&quot;</code></pre>
 </div>
 </div>
 </section>
-<section id="построение-и-стохастическое-выполнение-сетей" class="level2">
-<h2 class="anchored" data-anchor-id="построение-и-стохастическое-выполнение-сетей">Построение и стохастическое выполнение сетей</h2>
-<p>Один seed позволяет повторить каждую базовую траекторию.</p>
+<section id="сопоставление-позиций-eat" class="level2">
+<h2 class="anchored" data-anchor-id="сопоставление-позиций-eat">Сопоставление позиций Eat</h2>
 <div id="6" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>classical_net, classical_initial <span class="op">=</span> <span class="fu">build_classical_network</span>(N)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>arbiter_net, arbiter_initial <span class="op">=</span> <span class="fu">build_arbiter_network</span>(N)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>classical <span class="op">=</span> <span class="fu">simulate_stochastic</span>(classical_net, classical_initial, TMAX;</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    rates<span class="op">=</span>RATES, rng<span class="op">=</span><span class="fu">MersenneTwister</span>(<span class="fl">202605</span>))</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>arbiter <span class="op">=</span> <span class="fu">simulate_stochastic</span>(arbiter_net, arbiter_initial, TMAX;</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    rates<span class="op">=</span>RATES, rng<span class="op">=</span><span class="fu">MersenneTwister</span>(<span class="fl">202605</span>))</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(DATA_DIR, <span class="st">&quot;classical_trajectory.csv&quot;</span>), classical.trajectory)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(DATA_DIR, <span class="st">&quot;arbiter_trajectory.csv&quot;</span>), arbiter.trajectory)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>eat_columns <span class="op">=</span> [<span class="fu">Symbol</span>(<span class="st">&quot;Eat_</span><span class="sc">$</span>i<span class="st">&quot;</span>) for i <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>N]</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> trajectory <span class="kw">in</span> (classical, arbiter)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all</span>(name <span class="op">-&gt;</span> name <span class="kw">in</span> <span class="fu">propertynames</span>(trajectory), eat_columns) <span class="op">||</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        <span class="fu">error</span>(<span class="st">&quot;В CSV отсутствуют необходимые столбцы Eat&quot;</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">issorted</span>(trajectory.time) <span class="op">||</span> <span class="fu">error</span>(<span class="st">&quot;Временные отметки должны быть упорядочены&quot;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2</span>, framestyle<span class="op">=:</span>box,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    gridalpha<span class="op">=</span><span class="fl">0.22</span>, left_margin<span class="op">=</span><span class="fl">7</span>Plots.mm, bottom_margin<span class="op">=</span><span class="fl">5</span>Plots.mm)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>labels <span class="op">=</span> <span class="fu">permutedims</span>([<span class="st">&quot;Философ </span><span class="sc">$</span>i<span class="st">&quot;</span> for i <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>N])</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">plot</span>(classical.time, <span class="fu">Matrix</span>(classical[<span class="op">:</span>, eat_columns]);</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span>labels, seriestype<span class="op">=:</span>steppost, xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Eat (0/1)&quot;</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    ylims<span class="op">=</span>(<span class="op">-</span><span class="fl">0.08</span>, <span class="fl">1.08</span>), title<span class="op">=</span><span class="st">&quot;Классическая сеть&quot;</span>, legend<span class="op">=:</span>outerright)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">plot</span>(arbiter.time, <span class="fu">Matrix</span>(arbiter[<span class="op">:</span>, eat_columns]);</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span>labels, seriestype<span class="op">=:</span>steppost, xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Eat (0/1)&quot;</span>,</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    ylims<span class="op">=</span>(<span class="op">-</span><span class="fl">0.08</span>, <span class="fl">1.08</span>), title<span class="op">=</span><span class="st">&quot;Сеть с арбитром&quot;</span>, legend<span class="op">=:</span>outerright)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>comparison <span class="op">=</span> <span class="fu">plot</span>(p1, p2; layout<span class="op">=</span>(<span class="fl">2</span>, <span class="fl">1</span>), size<span class="op">=</span>(<span class="fl">1100</span>, <span class="fl">850</span>))</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(comparison, <span class="fu">joinpath</span>(IMAGE_DIR, <span class="st">&quot;03-plot.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/project/data/01_dining_philosophers/arbiter_trajectory.csv&quot;</code></pre>
+<pre><code>&quot;/workspace/labs/lab05/image/03-plot.png&quot;</code></pre>
 </div>
 </div>
 </section>
-<section id="детерминированная-аппроксимация" class="level2">
-<h2 class="anchored" data-anchor-id="детерминированная-аппроксимация">Детерминированная аппроксимация</h2>
-<p>Непрерывные значения не являются целочисленной маркировкой сети.</p>
+<section id="проверка-последней-маркировки" class="level2">
+<h2 class="anchored" data-anchor-id="проверка-последней-маркировки">Проверка последней маркировки</h2>
 <div id="8" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ode_classical <span class="op">=</span> <span class="fu">simulate_ode</span>(classical_net, classical_initial, <span class="fl">20.0</span>;</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    rates<span class="op">=</span>RATES, saveat<span class="op">=</span><span class="fl">0.1</span>)</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>ode_arbiter <span class="op">=</span> <span class="fu">simulate_ode</span>(arbiter_net, arbiter_initial, <span class="fl">20.0</span>;</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    rates<span class="op">=</span>RATES, saveat<span class="op">=</span><span class="fl">0.1</span>)</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(DATA_DIR, <span class="st">&quot;classical_ode.csv&quot;</span>), ode_classical)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(DATA_DIR, <span class="st">&quot;arbiter_ode.csv&quot;</span>), ode_arbiter)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/project/data/01_dining_philosophers/arbiter_ode.csv&quot;</code></pre>
-</div>
-</div>
-</section>
-<section id="сводные-показатели" class="level2">
-<h2 class="anchored" data-anchor-id="сводные-показатели">Сводные показатели</h2>
-<p>Сопоставляем блокировку, число событий, приёмы пищи и индекс Джейна.</p>
-<div id="10" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> <span class="fu">DataFrame</span>(</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    variant<span class="op">=</span>[<span class="st">&quot;Классическая сеть&quot;</span>, <span class="st">&quot;Сеть с арбитром&quot;</span>],</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    deadlock<span class="op">=</span>[classical.deadlock, arbiter.deadlock],</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    stop_time<span class="op">=</span>[classical.stop_time, arbiter.stop_time],</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    events<span class="op">=</span>[classical.events, arbiter.events],</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    completed_meals<span class="op">=</span>[<span class="fu">sum</span>(classical.meal_counts), <span class="fu">sum</span>(arbiter.meal_counts)],</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    fairness<span class="op">=</span>[<span class="fu">jain_fairness</span>(classical.meal_counts), <span class="fu">jain_fairness</span>(arbiter.meal_counts)],</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(DATA_DIR, <span class="st">&quot;summary.csv&quot;</span>), summary)</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;=== Обедающие философы: базовый эксперимент ===&quot;</span>)</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;Философов: </span><span class="sc">$</span>N<span class="st">, горизонт: </span><span class="sc">$</span>TMAX<span class="st">&quot;</span>)</span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="fu">show</span>(summary; allrows<span class="op">=</span><span class="cn">true</span>, allcols<span class="op">=</span><span class="cn">true</span>)</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>()</span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;Завершённые приёмы пищи, классическая сеть: </span><span class="sc">$</span>(classical.meal_counts)<span class="st">&quot;</span>)</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">&quot;Завершённые приёмы пищи, сеть с арбитром: </span><span class="sc">$</span>(arbiter.meal_counts)<span class="st">&quot;</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>classic_net, _ <span class="op">=</span> <span class="fu">build_classical_network</span>(N)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>arbiter_net, _ <span class="op">=</span> <span class="fu">build_arbiter_network</span>(N)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>classic_last <span class="op">=</span> <span class="dt">Int</span>[<span class="fu">last</span>(classical)[name] for name <span class="kw">in</span> classic_net.place_names]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>arbiter_last <span class="op">=</span> <span class="dt">Int</span>[<span class="fu">last</span>(arbiter)[name] for name <span class="kw">in</span> arbiter_net.place_names]</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> <span class="fu">DataFrame</span>(variant<span class="op">=</span>[<span class="st">&quot;Классическая&quot;</span>, <span class="st">&quot;С арбитром&quot;</span>],</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    rows<span class="op">=</span>[<span class="fu">nrow</span>(classical), <span class="fu">nrow</span>(arbiter)],</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    last_event<span class="op">=</span>[<span class="fu">last</span>(classical.time), <span class="fu">last</span>(arbiter.time)],</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    deadlock<span class="op">=</span>[<span class="fu">detect_deadlock</span>(classic_net, classic_last),</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>              <span class="fu">detect_deadlock</span>(arbiter_net, arbiter_last)],</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    max_eating<span class="op">=</span>[<span class="fu">maximum</span>(<span class="fu">sum</span>(<span class="fu">Matrix</span>(classical[<span class="op">:</span>, eat_columns]); dims<span class="op">=</span><span class="fl">2</span>)),</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>                <span class="fu">maximum</span>(<span class="fu">sum</span>(<span class="fu">Matrix</span>(arbiter[<span class="op">:</span>, eat_columns]); dims<span class="op">=</span><span class="fl">2</span>))])</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>CSV.<span class="fu">write</span>(<span class="fu">joinpath</span>(OUTPUT_DIR, <span class="st">&quot;summary.csv&quot;</span>), summary)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="fu">show</span>(summary; allrows<span class="op">=</span><span class="cn">true</span>, allcols<span class="op">=</span><span class="cn">true</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
-<pre>=== Обедающие философы: базовый эксперимент ===
-Философов: 5, горизонт: 50.0
-<span class="ansi-bold">2×6 DataFrame</span>
-<span class="ansi-bold"> Row </span>│<span class="ansi-bold"> variant           </span><span class="ansi-bold"> deadlock </span><span class="ansi-bold"> stop_time </span><span class="ansi-bold"> events </span><span class="ansi-bold"> completed_meals </span><span class="ansi-bold"> fairness </span>
-<span class="ansi-bold">     </span>│<span class="ansi-bright-black-fg"> String            </span><span class="ansi-bright-black-fg"> Bool     </span><span class="ansi-bright-black-fg"> Float64   </span><span class="ansi-bright-black-fg"> Int64  </span><span class="ansi-bright-black-fg"> Int64           </span><span class="ansi-bright-black-fg"> Float64  </span>
-─────┼───────────────────────────────────────────────────────────────────────────
-   1 │ Классическая сеть      true   0.597319       5                0    0.0
-   2 │ Сеть с арбитром       false  48.9047        98               31    0.9109
-Завершённые приёмы пищи, классическая сеть: [0, 0, 0, 0, 0]
-Завершённые приёмы пищи, сеть с арбитром: [5, 10, 5, 5, 6]
+<pre><span class="ansi-bold">2×5 DataFrame</span>
+<span class="ansi-bold"> Row </span>│<span class="ansi-bold"> variant      </span><span class="ansi-bold"> rows  </span><span class="ansi-bold"> last_event </span><span class="ansi-bold"> deadlock </span><span class="ansi-bold"> max_eating </span>
+<span class="ansi-bold">     </span>│<span class="ansi-bright-black-fg"> String       </span><span class="ansi-bright-black-fg"> Int64 </span><span class="ansi-bright-black-fg"> Float64    </span><span class="ansi-bright-black-fg"> Bool     </span><span class="ansi-bright-black-fg"> Int64      </span>
+─────┼───────────────────────────────────────────────────────
+   1 │ Классическая      6    0.597319      true           0
+   2 │ С арбитром       99   48.9047       false           1
 </pre>
 </div>
 </div>
 </div>
-</section>
-<section id="эволюция-маркировок" class="level2">
-<h2 class="anchored" data-anchor-id="эволюция-маркировок">Эволюция маркировок</h2>
-<p>Результаты сохраняются в общий каталог изображений лабораторной.</p>
-<div id="12" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span>(fontfamily<span class="op">=</span><span class="st">&quot;DejaVu Sans&quot;</span>, linewidth<span class="op">=</span><span class="fl">2.1</span>, framestyle<span class="op">=:</span>box,</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    gridalpha<span class="op">=</span><span class="fl">0.22</span>, legendfontsize<span class="op">=</span><span class="fl">8</span>, guidefontsize<span class="op">=</span><span class="fl">11</span>, titlefontsize<span class="op">=</span><span class="fl">13</span>,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    left_margin<span class="op">=</span><span class="fl">7</span>Plots.mm, bottom_margin<span class="op">=</span><span class="fl">5</span>Plots.mm)</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">marking_panels</span>(trajectory, N, variant)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    panels <span class="op">=</span> <span class="fu">map</span>((<span class="st">&quot;Think&quot;</span>, <span class="st">&quot;Hungry&quot;</span>, <span class="st">&quot;Eat&quot;</span>, <span class="st">&quot;Fork&quot;</span>)) <span class="cf">do</span> group</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        columns <span class="op">=</span> [<span class="fu">Symbol</span>(<span class="st">&quot;</span><span class="sc">$</span>(group)<span class="st">_</span><span class="sc">$</span>i<span class="st">&quot;</span>) for i <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>N]</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>        <span class="fu">plot</span>(trajectory.time, <span class="fu">Matrix</span>(trajectory[<span class="op">:</span>, columns]);</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>            label<span class="op">=</span><span class="fu">permutedims</span>([<span class="st">&quot;</span><span class="sc">$</span>group<span class="st"> </span><span class="sc">$</span>i<span class="st">&quot;</span> for i <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>N]),</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>            seriestype<span class="op">=:</span>steppost, xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Фишки&quot;</span>,</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>            title<span class="op">=</span><span class="st">&quot;</span><span class="sc">$</span>variant<span class="st">: </span><span class="sc">$</span>group<span class="st">&quot;</span>, ylims<span class="op">=</span>(<span class="op">-</span><span class="fl">0.08</span>, <span class="fl">1.08</span>),</span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>            legend<span class="op">=:</span>outerright)</span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>(panels<span class="op">...</span>; layout<span class="op">=</span>(<span class="fl">2</span>, <span class="fl">2</span>), size<span class="op">=</span>(<span class="fl">1400</span>, <span class="fl">900</span>))</span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>p1 <span class="op">=</span> <span class="fu">marking_panels</span>(classical.trajectory, N, <span class="st">&quot;Классическая сеть&quot;</span>)</span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p1, <span class="fu">joinpath</span>(IMAGE_DIR, <span class="st">&quot;01-plot.png&quot;</span>))</span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>p2 <span class="op">=</span> <span class="fu">marking_panels</span>(arbiter.trajectory, N, <span class="st">&quot;С арбитром&quot;</span>)</span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p2, <span class="fu">joinpath</span>(IMAGE_DIR, <span class="st">&quot;02-plot.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/image/02-plot.png&quot;</code></pre>
-</div>
-</div>
-</section>
-<section id="сравнение-непрерывных-решений" class="level2">
-<h2 class="anchored" data-anchor-id="сравнение-непрерывных-решений">Сравнение непрерывных решений</h2>
-<div id="14" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>classical_ode_aggregate <span class="op">=</span> <span class="fu">aggregate_trajectory</span>(ode_classical, N)</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>arbiter_ode_aggregate <span class="op">=</span> <span class="fu">aggregate_trajectory</span>(ode_arbiter, N)</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>p4 <span class="op">=</span> <span class="fu">plot</span>(classical_ode_aggregate.time, classical_ode_aggregate.Eat;</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">&quot;классическая сеть&quot;</span>, xlabel<span class="op">=</span><span class="st">&quot;Время&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Сумма Eat&quot;</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">&quot;Детерминированная mass-action аппроксимация&quot;</span>, size<span class="op">=</span>(<span class="fl">1000</span>, <span class="fl">620</span>))</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(p4, arbiter_ode_aggregate.time, arbiter_ode_aggregate.Eat;</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">&quot;с арбитром&quot;</span>)</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(p4, <span class="fu">joinpath</span>(IMAGE_DIR, <span class="st">&quot;04-plot.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/image/04-plot.png&quot;</code></pre>
-</div>
-</div>
-</section>
-<section id="матрица-инцидентности" class="level2">
-<h2 class="anchored" data-anchor-id="матрица-инцидентности">Матрица инцидентности</h2>
-<div id="16" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>matrix_plot <span class="op">=</span> <span class="fu">heatmap</span>(classical_net.output <span class="op">-</span> classical_net.input;</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    xlabel<span class="op">=</span><span class="st">&quot;Переход&quot;</span>, ylabel<span class="op">=</span><span class="st">&quot;Позиция&quot;</span>, title<span class="op">=</span><span class="st">&quot;Матрица инцидентности классической сети&quot;</span>,</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    color<span class="op">=:</span>balance, size<span class="op">=</span>(<span class="fl">1000</span>, <span class="fl">700</span>))</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="fu">savefig</span>(matrix_plot, <span class="fu">joinpath</span>(IMAGE_DIR, <span class="st">&quot;05-plot.png&quot;</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&quot;/workspace/labs/lab05/image/05-plot.png&quot;</code></pre>
-</div>
-</div>
-<p>Классическая сеть заканчивает работу в маркировке, где каждый философ удерживает одну вилку. Арбитр ограничивает число одновременно начавших захват ресурсов и тем самым разрывает условие циклического ожидания.</p>
+<p>Нулевое значение Eat само по себе не доказывает deadlock. Проверка множества разрешённых переходов отличает взаимную блокировку от временной паузы питания.</p>
 </section>
 
 </main>

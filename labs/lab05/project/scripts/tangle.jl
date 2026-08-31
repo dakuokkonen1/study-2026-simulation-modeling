@@ -11,6 +11,11 @@ function generate_formats(source::AbstractString)
         execute=false, credit=false)
     Literate.markdown(source, projectdir("markdown", name); name,
         flavor=Literate.QuartoFlavor(), credit=false)
+    Literate.markdown(source, projectdir("markdown", name);
+        name="$(name)-report", flavor=Literate.QuartoFlavor(), credit=false,
+        postprocess=text -> replace(
+            replace(text, "```{julia}" => "```julia"),
+            r"^(#+) "m => s"##\1 "))
 end
 
 foreach(generate_formats, ARGS)

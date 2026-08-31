@@ -1,6 +1,7 @@
 using Test
 using Random
 using DataFrames
+using CSV
 
 include(joinpath(@__DIR__, "..", "src", "dining_philosophers.jl"))
 using .DiningPhilosophers
@@ -13,6 +14,54 @@ using .DiningPhilosophers
     @test sum(initial) == 10
     @test sum(arbiter_initial) == 14
     @test arbiter.place_names[end] == :Arbiter
+end
+
+@testset "Conservation on complete trajectories" begin
+    for N in (3, 5), builder in (build_classical_network, build_arbiter_network)
+        net, initial = builder(N)
+        result = simulate_stochastic(net, initial, 30.0; rng=MersenneTwister(123))
+        df = result.trajectory
+        @test issorted(df.time) && maximum(df.time) <= 30.0
+        @test all(all(df[!, Symbol("Think_$i")] .+ df[!, Symbol("Hungry_$i")] .+
+            df[!, Symbol("Eat_$i")] .== 1) for i in 1:N)
+        @test all(all(df[!, Symbol("Fork_$i")] .+ df[!, Symbol("Hungry_$i")] .+
+            df[!, Symbol("Eat_$i")] .+ df[!, Symbol("Eat_$(mod1(i - 1, N))")] .== 1)
+            for i in 1:N)
+    end
+end
+
+@testset "Classical animation experiment" begin
+    net, initial = build_classical_network(3)
+    result = simulate_stochastic(net, initial, 30.0; rng=MersenneTwister(123))
+    @test result.deadlock
+    @test detect_deadlock(net, Int[last(result.trajectory)[n] for n in net.place_names])
+    @test all(last(result.trajectory)[Symbol("Hungry_$i")] == 1 for i in 1:3)
+end
+
+@testset "Saved CSV analysis" begin
+    root = joinpath(@__DIR__, "..")
+    base = joinpath(root, "data", "01_dining_philosophers")
+    for (variant, builder) in (("classical", build_classical_network),
+                               ("arbiter", build_arbiter_network))
+        frame = CSV.read(joinpath(base, "$(variant)_trajectory.csv"), DataFrame)
+        net, _ = builder(5)
+        @test all(n -> n in propertynames(frame), net.place_names)
+        @test detect_deadlock(net, Int[last(frame)[n] for n in net.place_names]) ==
+            (variant == "classical")
+    end
+    analysis = CSV.read(joinpath(root, "data", "04_comparative_report", "summary.csv"), DataFrame)
+    @test analysis.deadlock == [true, false]
+    @test analysis.rows == [6, 99]
+end
+
+@testset "Literate outputs for every scenario" begin
+    root = joinpath(@__DIR__, "..")
+    for name in ("01_dining_philosophers", "02_parameter_scan",
+                 "03_marking_animation", "04_comparative_report")
+        @test isfile(joinpath(root, "scripts", name, "$name.jl"))
+        @test isfile(joinpath(root, "notebooks", name, "$name.ipynb"))
+        @test isfile(joinpath(root, "markdown", name, "$name.qmd"))
+    end
 end
 
 @testset "Transition firing and invariants" begin

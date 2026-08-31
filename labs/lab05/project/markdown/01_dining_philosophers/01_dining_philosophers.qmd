@@ -84,39 +84,23 @@ default(fontfamily="DejaVu Sans", linewidth=2.1, framestyle=:box,
     gridalpha=0.22, legendfontsize=8, guidefontsize=11, titlefontsize=13,
     left_margin=7Plots.mm, bottom_margin=5Plots.mm)
 
-classical_aggregate = aggregate_trajectory(classical.trajectory, N)
-arbiter_aggregate = aggregate_trajectory(arbiter.trajectory, N)
+function marking_panels(trajectory, N, variant)
+    panels = map(("Think", "Hungry", "Eat", "Fork")) do group
+        columns = [Symbol("$(group)_$i") for i in 1:N]
+        plot(trajectory.time, Matrix(trajectory[:, columns]);
+            label=permutedims(["$group $i" for i in 1:N]),
+            seriestype=:steppost, xlabel="Время", ylabel="Фишки",
+            title="$variant: $group", ylims=(-0.08, 1.08),
+            legend=:outerright)
+    end
+    plot(panels...; layout=(2, 2), size=(1400, 900))
+end
 
-p1 = plot(classical_aggregate.time, classical_aggregate.Think;
-    label="размышляют", xlabel="Время", ylabel="Число философов",
-    title="Классическая сеть: эволюция маркировки", size=(1000, 620))
-plot!(p1, classical_aggregate.time, classical_aggregate.Hungry; label="держат левую вилку")
-plot!(p1, classical_aggregate.time, classical_aggregate.Eat; label="едят")
+p1 = marking_panels(classical.trajectory, N, "Классическая сеть")
 savefig(p1, joinpath(IMAGE_DIR, "01-plot.png"))
 
-p2 = plot(arbiter_aggregate.time, arbiter_aggregate.Think;
-    label="размышляют", xlabel="Время", ylabel="Число философов",
-    title="Сеть с арбитром: эволюция маркировки", size=(1000, 620))
-plot!(p2, arbiter_aggregate.time, arbiter_aggregate.Hungry; label="держат левую вилку")
-plot!(p2, arbiter_aggregate.time, arbiter_aggregate.Eat; label="едят")
-plot!(p2, arbiter_aggregate.time, arbiter_aggregate.Arbiter; label="разрешения арбитра",
-    linestyle=:dash, color=:black)
+p2 = marking_panels(arbiter.trajectory, N, "С арбитром")
 savefig(p2, joinpath(IMAGE_DIR, "02-plot.png"))
-```
-
-## Состояния приёма пищи
-Отдельные кривые соответствуют позициям Eat каждого философа.
-
-```{julia}
-eat_columns = [Symbol("Eat_$i") for i in 1:N]
-p3a = plot(classical.trajectory.time, Matrix(classical.trajectory[:, eat_columns]);
-    label=permutedims(["Философ $i" for i in 1:N]), xlabel="Время",
-    ylabel="Маркер Eat", title="Классическая сеть")
-p3b = plot(arbiter.trajectory.time, Matrix(arbiter.trajectory[:, eat_columns]);
-    label=permutedims(["Философ $i" for i in 1:N]), xlabel="Время",
-    ylabel="Маркер Eat", title="Сеть с арбитром")
-p3 = plot(p3a, p3b; layout=(2, 1), size=(1000, 850))
-savefig(p3, joinpath(IMAGE_DIR, "03-plot.png"))
 ```
 
 ## Сравнение непрерывных решений

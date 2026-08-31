@@ -1,8 +1,3 @@
-# # Анимация классической сети Петри
-#
-# Обязательный опыт: три философа, горизонт 30. Кадры соответствуют реальным
-# событиям. Дополнительный опыт с арбитром показывает продолжающуюся работу.
-
 using DrWatson
 @quickactivate "project"
 ENV["GKSwstype"] = "100"
@@ -10,7 +5,6 @@ using CSV, DataFrames, Plots, Random
 include(srcdir("dining_philosophers.jl"))
 using .DiningPhilosophers
 
-# ## Начальные условия и траектории
 const N = 3
 const TMAX = 30.0
 const FPS = 5
@@ -27,8 +21,6 @@ arbiter = simulate_stochastic(arbiter_net, arbiter_initial, TMAX;
 CSV.write(joinpath(DATA_DIR, "classical_trajectory.csv"), classical.trajectory)
 CSV.write(joinpath(DATA_DIR, "arbiter_trajectory.csv"), arbiter.trajectory)
 
-# ## Кадр маркировки
-# Столбец обозначает одну позицию сети, высота — число фишек.
 function marking_frame(net, row, variant)
     labels = string.(net.place_names)
     values = [row[name] for name in net.place_names]
@@ -39,19 +31,15 @@ function marking_frame(net, row, variant)
         bottom_margin=12Plots.mm)
 end
 
-# ## Анимация возникновения deadlock
 classic_animation = @animate for row in eachrow(classical.trajectory)
     marking_frame(classical_net, row, "Классическая сеть")
 end
 gif(classic_animation, joinpath(IMAGE_DIR, "01-animation.gif"); fps=FPS)
-#nb display(MIME"image/gif"(), read(joinpath(IMAGE_DIR, "01-animation.gif")))
 
-# ## Начальная и последняя маркировки
 first_frame = marking_frame(classical_net, first(classical.trajectory), "Начало")
 last_frame = marking_frame(classical_net, last(classical.trajectory), "Остановка")
 static_comparison = plot(first_frame, last_frame; layout=(2, 1), size=(1100, 950))
 savefig(static_comparison, joinpath(IMAGE_DIR, "08-plot.png"))
-#nb display(static_comparison)
 outcomes = DataFrame(variant=["Классическая", "С арбитром"],
     philosophers=fill(N, 2), horizon=fill(TMAX, 2),
     deadlock=[classical.deadlock, arbiter.deadlock],
@@ -61,13 +49,7 @@ CSV.write(joinpath(DATA_DIR, "summary.csv"), outcomes)
 show(outcomes; allrows=true, allcols=true)
 println()
 
-# ## Дополнительная анимация с арбитром
 arbiter_animation = @animate for row in eachrow(arbiter.trajectory)
     marking_frame(arbiter_net, row, "С арбитром")
 end
 gif(arbiter_animation, joinpath(IMAGE_DIR, "02-animation.gif"); fps=FPS)
-#nb display(MIME"image/gif"(), read(joinpath(IMAGE_DIR, "02-animation.gif")))
-
-# В классической сети последняя маркировка не допускает ни одного перехода.
-# В модифицированной сети окончание данных обусловлено горизонтом наблюдения,
-# а не взаимной блокировкой.
