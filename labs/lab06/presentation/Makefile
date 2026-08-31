@@ -1,8 +1,6 @@
-all:
-	-@quarto render
+SOURCE = simulation-modeling-lab06-presentation.qmd
 
-clean:
-	-rm -rf _output
-
-cleanall: clean
-	-rm -rf .quarto
+.PHONY: all html
+all: html
+html:
+	quarto render $(SOURCE) --to revealjs --embed-resources

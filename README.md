@@ -12,7 +12,7 @@
 | 3 | Daisyworld: агентная модель саморегуляции | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab03) |
 | 4 | Агентная модель SIR | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab04) |
 | 5 | Сети Петри. Задача обедающих философов | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab05) |
-| 6 | Лабораторная работа № 6 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab06) |
+| 6 | Модель SIR в подходе сетей Петри | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab06) |
 | 7 | Лабораторная работа № 7 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab07) |
 | 8 | Лабораторная работа № 8 | [**Открыть каталог**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/labs/lab08) |
 
@@ -58,8 +58,8 @@ make test
 ## История и публикации
 
 - [**Журнал изменений**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/content/master/CHANGELOG.md)
-- [**Релиз v5.0.0 на GitHub**](https://github.com/dakuokkonen1/study-2026-simulation-modeling/releases/tag/v5.0.0)
-- [**Релиз v5.0.0 на GitVerse**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/releases/tag/v5.0.0)
+- [**Релиз v6.0.0 на GitHub**](https://github.com/dakuokkonen1/study-2026-simulation-modeling/releases/tag/v6.0.0)
+- [**Релиз v6.0.0 на GitVerse**](https://gitverse.ru/Dakuokkonen/study-2026-simulation-modeling/releases/tag/v6.0.0)
 
 ## Лицензия
 
