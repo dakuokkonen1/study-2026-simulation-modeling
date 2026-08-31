@@ -1,6 +1,6 @@
 ---
 title: "Лабораторная работа № 3"
-subtitle: "Дискретно-событийная модель системы массового обслуживания M/M/1"
+subtitle: "Daisyworld: агентная модель саморегуляции"
 author:
   - name: Куокконен Дарина Андреевна
     affiliations:
@@ -9,569 +9,826 @@ author:
         country: Российская Федерация
         address: ул. Миклухо-Маклая, д. 6
       - name: Учебная группа НФИбд-01-23
-date: 2026-08-30
+date: 2026-08-31
 lang: ru-RU
-keywords: [Julia, M/M/1, queueing theory, discrete-event simulation, Jupyter, Quarto]
+keywords: [Julia, Agents.jl, Daisyworld, DrWatson.jl, Literate.jl]
 abstract: |
-  Реализована дискретно-событийная модель одноканальной системы массового
-  обслуживания M/M/1. Имитационные оценки загрузки, длины очереди и времён
-  ожидания сопоставлены со стационарными формулами. Проведён нагрузочный
-  эксперимент, показавший нелинейный рост задержки при приближении загрузки к
-  единице. Результаты воспроизводятся в Julia и проверяются тестами.
+  Исследована пространственная агентная модель Daisyworld. Чёрные и белые
+  маргаритки изменяют температуру поверхности через альбедо, а температура
+  определяет вероятность их размножения. Реализованы начальные состояния,
+  анимация, временные ряды численности, сценарий изменения солнечной светимости
+  и три параметрических расширения. Сопоставлены четыре сочетания возраста
+  растений и начальной доли белых маргариток. Все сценарии представлены
+  самостоятельными исходниками Julia, таблицами, графиками и блокнотами.
 ---
+
+Российский университет дружбы народов имени Патриса Лумумбы.\
+Учебная группа НФИбд-01-23.
 
 # Содержание {.unnumbered}
 
 1. Цель и задание
-2. Теоретическое введение
-3. Среда и организация проекта
-4. Алгоритм имитации
-5. Базовый эксперимент
-6. Нагрузочный эксперимент
-7. Производные форматы и Jupyter
-8. Проверка и управление версиями
-9. Выводы
-10. Источники
+2. Математическая и агентная модель
+3. Вычислительный проект и реализация
+4. Основные эксперименты
+5. Параметрические исследования
+6. Литературное программирование и Jupyter
+7. Проверки и воспроизведение
+8. Выводы
+9. Источники
 
 {{< pagebreak >}}
 
 # Цель и задание
 
-Цель работы — освоить событийный подход к имитационному моделированию и
-исследовать систему массового обслуживания M/M/1 с пуассоновским потоком
-заявок и экспоненциальным временем обслуживания.
+Цель работы — исследовать обратную связь между популяцией и средой в
+пространственной модели Daisyworld средствами Agents.jl. Содержание соответствует
+главе 3 практикума А. В. Корольковой и Д. С. Кулябова, стр. 115–135.
 
-В работе требовалось:
+Необходимо выполнить семь самостоятельных сценариев: построить состояния поля,
+получить анимацию, проследить численности при постоянной светимости, исследовать
+изменяющуюся светимость и повторить три вычислительных сценария для сетки
+параметров. Отдельно подготовлены производные форматы Literate и их включение
+в отчёт. Генерируемые копии сценария не считаются новым экспериментом.
 
-1. реализовать календарь событий «приход/уход» без фиксированного шага времени;
-2. накопить интегральные статистики длины системы, очереди и занятости прибора;
-3. сопоставить оценки с формулами стационарной M/M/1;
-4. изучить изменение очереди при росте нагрузки;
-5. сформировать CSV, графики, QMD, HTML и выполненные блокноты Jupyter;
-6. подтвердить корректность реализации автоматическими тестами.
+| Сценарий в `scripts/` | Назначение | Страницы |
+|---|---|---|
+| `daisyworld.jl` | состояния при t = 0, 5, 45 | 123–124 |
+| `daisyworld-animate.jl` | 60 кадров эволюции поля | 124–125 |
+| `daisyworld-count.jl` | 1000 шагов при постоянной светимости | 125–127 |
+| `daisyworld-luminosity.jl` | 1000 шагов, сценарий ramp | 127–129 |
+| `daisyworld__param.jl` | четыре набора начальных условий | 129–134 |
+| `daisyworld-count__param.jl` | четыре временных ряда численности | 129–134 |
+| `daisyworld-luminosity__param.jl` | четыре опыта со светимостью | 129–134 |
 
-![Проверка пользователя, версии Julia и рабочего каталога](../image/01-terminal.png){#fig-lab03-env width=92%}
+: Самостоятельные сценарии лабораторной работы {#tbl-scripts}
 
-# Теоретическое введение
+{{< pagebreak >}}
 
-Обозначим через $\lambda$ интенсивность поступления заявок, через $\mu$ —
-интенсивность обслуживания, а через
+# Математическая и агентная модель
+
+## Пространство, агенты и начальное состояние
+
+Мир представлен периодической решёткой 30 × 30. Каждая из 900 ячеек может быть
+пустой или содержать одну маргаритку. Агент хранит координаты, вид, возраст и
+альбедо. Периодические границы означают, что у крайней ячейки есть соседи с
+противоположной стороны поля. При расчёте диффузии используется восемь соседей.
+
+| Параметр | Базовое значение |
+|---|---:|
+| Начальная доля белых и чёрных | 0,2 и 0,2 |
+| Максимальный возраст | 25 шагов |
+| Альбедо белой / чёрной маргаритки | 0,75 / 0,25 |
+| Альбедо пустой поверхности | 0,4 |
+| Начальная светимость L | 1,0 |
+| Seed генератора | 165 |
+
+: Базовые параметры {#tbl-base}
+
+В базовом начальном состоянии размещается по 180 растений каждого вида;
+остальные 540 ячеек свободны. Возраст начальных агентов случайный, поэтому
+исчезновение растений не синхронизировано одним моментом времени.
+
+## Нагрев и диффузия
+
+Поглощённая доля энергии в ячейке равна
 
 $$
-\rho=\frac{\lambda}{\mu}
-$$ {#eq-rho}
+E_{ij}=(1-a_{ij})L,
+$$
 
-— загрузку системы. Стационарный режим существует при $\rho<1$.
-
-Для M/M/1 среднее число заявок в системе и очереди равно
+где $a_{ij}$ — альбедо растения либо пустой поверхности. Локальная целевая
+температура задаётся формулой из методички:
 
 $$
-L=\frac{\rho}{1-\rho}, \qquad L_q=\frac{\rho^2}{1-\rho}.
-$$ {#eq-lengths}
+T^{\mathrm{loc}}_{ij}=72\ln E_{ij}+80 \quad (E_{ij}>0).
+$$
 
-По формуле Литтла времена пребывания и ожидания определяются как
+При неположительном $E_{ij}$ программный пример задаёт 80. В выполненных
+сценариях $L>0$ и альбедо меньше единицы, поэтому эта защитная ветвь не
+используется. После вычисления локального значения температура усредняется
+с предыдущей: $T_{ij}\leftarrow(T_{ij}+T^{\mathrm{loc}}_{ij})/2$.
+
+Диффузия переносит тепло к соседям:
 
 $$
-W=\frac{1}{\mu-\lambda}, \qquad
-W_q=\frac{\rho}{\mu-\lambda}.
-$$ {#eq-times}
+T_{ij}\leftarrow 0{,}5T_{ij}
++\frac{0{,}5}{8}\sum_{(k,l)\in\mathcal N_{ij}}T_{kl}.
+$$
 
-Формулы (@eq-lengths) и (@eq-times) показывают сингулярный рост показателей при
-$\rho\to1$. Это свойство особенно важно при проектировании информационных и
-телекоммуникационных систем: небольшое увеличение потока вблизи пропускной
-способности вызывает резкий рост задержки.
+Как в исходном коде практикума, обновление выполняется на месте в ходе обхода
+решётки. Это не синхронная схема с отдельным буфером температур: порядок
+обхода влияет на численные значения. Он зафиксирован в реализации.
 
-Аналитические характеристики вычисляются отдельной функцией общего модуля.
-Перед расчётом проверяется условие стационарности, поэтому нестабильная
-конфигурация не может быть ошибочно использована как контрольный пример.
+## Рождение, старение и обратная связь
+
+Вероятность появления потомка зависит от температуры:
+
+$$
+p(T)=\max\left(0,\min\left(1,
+0{,}1457T-0{,}0032T^2-0{,}6443\right)\right).
+$$
+
+Потомок наследует вид и альбедо, получает нулевой возраст и занимает случайную
+свободную соседнюю клетку. При отсутствии свободных соседей рождения нет.
+Возраст увеличивается при агентном шаге; достигшие `max_age` растения удаляются.
+Температура непосредственно влияет на размножение. Дополнительное правило
+гибели от холода или жары не вводилось, поскольку его нет в программном
+примере методички.
+
+Чёрные растения поглощают больше энергии и согревают поверхность, белые
+отражают больше энергии и охлаждают её. Изменение температуры сказывается
+на размножении обоих видов. Саморегуляция возникает из этой обратной связи,
+а не из отдельной команды, удерживающей среднюю температуру постоянной.
+
+## Сценарий изменения светимости
+
+Для `scenario = :ramp` после шагов 201–400 светимость увеличивается на 0,005
+за шаг, после шагов 501–750 уменьшается на 0,0025. В остальные моменты она
+не изменяется. Поэтому $L$ проходит уровни 1,0 → 2,0 → 1,375. Значение в CSV
+записывается после модельного шага; нагрев этого шага использовал значение
+до последнего изменения светимости. Этот порядок сохранён из практикума.
+
+# Вычислительный проект и реализация
+
+Проект содержит один модуль модели, общие функции построения результатов и
+семь литературных сценариев. `Project.toml` и `Manifest.toml` фиксируют
+зависимости. Agents.jl отвечает за решётку и планировщик, CairoMakie — за
+рисунки и анимацию, CSV и DataFrames — за таблицы, DrWatson — за пути.
+
+```bash
+cd /workspace/labs/lab03/project
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+make test
+```
+
+![Версии инструментов и состав самостоятельных сценариев](../image/01-terminal.png){#fig-environment width=94%}
+
+![Открытие общего модуля модели в терминале](../image/02-terminal.png){#fig-source width=94%}
+
+## Общий модуль
+
+Ниже приведён полный листинг `src/daisyworld.jl`. Инициализация проверяет
+доли, возраст и размер поля; все случайные операции используют генератор
+самой модели. Функция `measure` собирает состояние после шага в одну строку.
+
+В примере практикума часть случайных выборов не связана с генератором модели.
+Здесь им явно передаётся `abmrng(model)`: это техническое исправление сохраняет
+правила переходов, но делает одинаковый seed достаточным для повторения опыта.
 
 ```julia
-function theoretical_mm1(lambda::Real, mu::Real)
-    lambda > 0 || throw(ArgumentError("lambda must be positive"))
-    mu > lambda || throw(ArgumentError("stationary M/M/1 requires mu > lambda"))
-    rho = lambda / mu
-    return (
-        rho=rho,
-        mean_system=rho / (1 - rho),
-        mean_queue=rho^2 / (1 - rho),
-        mean_wait=rho / (mu - lambda),
-        mean_sojourn=1 / (mu - lambda),
+module DaisyworldModel
+
+using Agents, Random, Statistics
+using StatsBase: sample
+
+export Daisy,
+    daisyworld,
+    daisy_step!,
+    daisyworld_step!,
+    measure,
+    advance!,
+    update_surface_temperature!,
+    diffuse_temperature!,
+    propagate!,
+    solar_activity!
+
+@agent struct Daisy(GridAgent{2})
+    breed::Symbol
+    age::Int
+    albedo::Float64
+end
+
+function update_surface_temperature!(pos, model)
+    albedo =
+        isempty(pos, model) ? model.surface_albedo :
+        model[id_in_position(pos, model)].albedo
+    absorbed = (1 - albedo) * model.solar_luminosity
+    heating = absorbed > 0 ? 72 * log(absorbed) + 80 : 80.0
+    model.temperature[pos...] =
+        (model.temperature[pos...] + heating) / 2
+end
+
+function diffuse_temperature!(pos, model)
+    neighbors = nearby_positions(pos, model)
+    model.temperature[pos...] =
+        (1 - model.ratio) * model.temperature[pos...] +
+        model.ratio * sum(model.temperature[p...] for p in neighbors) /
+        8
+end
+
+function propagate!(pos, model)
+    isempty(pos, model) && return
+    parent = model[id_in_position(pos, model)]
+    temperature = model.temperature[pos...]
+    probability = clamp(
+        0.1457 * temperature - 0.0032 * temperature^2 - 0.6443,
+        0,
+        1,
     )
-end
-```
-
-Листинг 1 — Аналитические характеристики из `src/queueing_models.jl`
-
-# Среда и организация проекта
-
-Работа выполнена в Julia 1.11.9. Зависимости закреплены файлами
-`Project.toml` и `Manifest.toml`. В общем модуле находится математическая
-и событийная логика, два сценария отвечают за базовый и нагрузочный
-эксперименты, а тесты обращаются непосредственно к тому же модулю.
-
-| Компонент | Назначение |
-|---|---|
-| `src/queueing_models.jl` | аналитические формулы и событийная модель |
-| `scripts/01_mm1_queue.jl` | базовый эксперимент и сравнение с теорией |
-| `scripts/02_load_scan.jl` | серия прогонов для семи уровней нагрузки |
-| `scripts/tangle.jl` | генерация Julia, QMD и IPYNB |
-| `test/runtests.jl` | проверки формул, ограничений и статистик |
-
-: Структура вычислительной части лабораторной работы {#tbl-lab03-files}
-
-![Состав Julia-проекта и закреплённые зависимости](../image/02-terminal.png){#fig-lab03-tree width=92%}
-
-## Типы данных и интерфейс модуля
-
-```julia
-module QueueingModels
-
-using Random
-using Statistics
-
-export MM1Result, theoretical_mm1, simulate_mm1
-
-struct MM1Result
-    arrival_rate::Float64
-    service_rate::Float64
-    horizon::Float64
-    arrivals::Int
-    served::Int
-    lost::Int
-    utilization::Float64
-    mean_system::Float64
-    mean_queue::Float64
-    mean_wait::Float64
-    mean_sojourn::Float64
-    times::Vector{Float64}
-    queue_lengths::Vector{Int}
-    waits::Vector{Float64}
-end
-```
-
-Листинг 2 — Объявления модуля и типы данных из `src/queueing_models.jl`
-
-# Алгоритм имитации
-
-Модель хранит времена ближайшего поступления и ухода. На каждом шаге
-выбирается более раннее событие. Между соседними событиями состояние постоянно,
-поэтому площади под траекториями $N(t)$ и $Q(t)$ накапливаются точно как суммы
-прямоугольников.
-
-Вектор `queue_arrivals` содержит времена прихода всех заявок в системе,
-включая обслуживаемую. Поэтому число ожидающих равно
-`max(length(queue_arrivals) - 1, 0)`. Поле `service_start` хранит начало
-текущего обслуживания; `next_departure = Inf` означает свободный прибор.
-В типе результата отдельно сохранены временные средние и выборка ожиданий.
-
-```julia
-function simulate_mm1(lambda::Real, mu::Real; horizon::Real=1000.0,
-                      capacity::Integer=typemax(Int), seed::Integer=202603)
-    lambda > 0 || throw(ArgumentError("lambda must be positive"))
-    mu > 0 || throw(ArgumentError("mu must be positive"))
-    horizon > 0 || throw(ArgumentError("horizon must be positive"))
-    capacity >= 1 || throw(ArgumentError("capacity must be at least one"))
-
-    rng = MersenneTwister(seed)
-    next_arrival = randexp(rng) / lambda
-    next_departure = Inf
-    queue_arrivals = Float64[]
-    service_start = 0.0
-    t = 0.0
-    last_t = 0.0
-    area_system = 0.0
-    area_queue = 0.0
-    busy_area = 0.0
-    arrivals = served = lost = 0
-    waits = Float64[]
-    sojourns = Float64[]
-    times = Float64[0.0]
-    queue_lengths = Int[0]
-
-    while true
-        event_time = min(next_arrival, next_departure)
-        event_time > horizon && break
-        n_system = length(queue_arrivals)
-        dt = event_time - last_t
-        area_system += n_system * dt
-        area_queue += max(n_system - 1, 0) * dt
-        busy_area += (n_system > 0) * dt
-        t = event_time
-        last_t = t
-
-        if next_arrival <= next_departure
-            arrivals += 1
-            if length(queue_arrivals) < capacity
-                push!(queue_arrivals, t)
-                if length(queue_arrivals) == 1
-                    service_start = t
-                    next_departure = t + randexp(rng) / mu
-                end
-            else
-                lost += 1
-            end
-            next_arrival = t + randexp(rng) / lambda
-        else
-            arrival_time = popfirst!(queue_arrivals)
-            push!(waits, service_start - arrival_time)
-            push!(sojourns, t - arrival_time)
-            served += 1
-            if isempty(queue_arrivals)
-                next_departure = Inf
-            else
-                service_start = t
-                next_departure = t + randexp(rng) / mu
-            end
-        end
-        push!(times, t)
-        push!(queue_lengths, max(length(queue_arrivals) - 1, 0))
+    if rand(abmrng(model)) < probability
+        target = random_nearby_position(
+            pos,
+            model,
+            1,
+            p -> isempty(p, model),
+        )
+        isnothing(target) ||
+            add_agent!(target, model, parent.breed, 0, parent.albedo)
     end
+    nothing
+end
 
-    dt = horizon - last_t
-    n_system = length(queue_arrivals)
-    area_system += n_system * dt
-    area_queue += max(n_system - 1, 0) * dt
-    busy_area += (n_system > 0) * dt
+function daisy_step!(agent, model)
+    agent.age += 1
+    agent.age >= model.max_age && remove_agent!(agent, model)
+    nothing
+end
 
-    return MM1Result(
-        Float64(lambda), Float64(mu), Float64(horizon), arrivals, served, lost,
-        busy_area / horizon, area_system / horizon, area_queue / horizon,
-        isempty(waits) ? NaN : mean(waits),
-        isempty(sojourns) ? NaN : mean(sojourns),
-        times, queue_lengths, waits,
+function solar_activity!(model)
+    if model.scenario == :ramp
+        200 < model.tick <= 400 &&
+            (model.solar_luminosity += model.solar_change)
+        500 < model.tick <= 750 &&
+            (model.solar_luminosity -= model.solar_change / 2)
+    elseif model.scenario == :change
+        model.solar_luminosity += model.solar_change
+    end
+    nothing
+end
+
+function daisyworld_step!(model)
+    for pos in positions(model)
+        update_surface_temperature!(pos, model)
+        diffuse_temperature!(pos, model)
+        propagate!(pos, model)
+    end
+    model.tick += 1
+    solar_activity!(model)
+end
+
+function daisyworld(;
+    griddims = (30, 30),
+    max_age = 25,
+    init_white = 0.2,
+    init_black = 0.2,
+    albedo_white = 0.75,
+    albedo_black = 0.25,
+    surface_albedo = 0.4,
+    solar_change = 0.005,
+    solar_luminosity = 1.0,
+    scenario = :default,
+    seed = 165,
+)
+    all(>=(3), griddims) ||
+        throw(ArgumentError("grid dimensions must be at least 3"))
+    max_age > 0 || throw(ArgumentError("max_age must be positive"))
+    0 <= init_white <= 1 &&
+    0 <= init_black <= 1 &&
+    init_white + init_black <= 1 || throw(
+        ArgumentError("initial fractions must sum to at most one"),
+    )
+    all(
+        x -> 0 <= x <= 1,
+        (albedo_white, albedo_black, surface_albedo),
+    ) || throw(ArgumentError("albedo outside [0,1]"))
+    scenario in (:default, :ramp, :change) ||
+        throw(ArgumentError("unknown scenario"))
+    properties = Dict{Symbol,Any}(
+        :max_age=>max_age,
+        :surface_albedo=>surface_albedo,
+        :solar_luminosity=>solar_luminosity,
+        :solar_change=>solar_change,
+        :scenario=>scenario,
+        :tick=>0,
+        :ratio=>0.5,
+        :temperature=>zeros(griddims),
+    )
+    model = StandardABM(
+        Daisy,
+        GridSpaceSingle(griddims; periodic = true);
+        properties,
+        rng = MersenneTwister(seed),
+        agent_step! = daisy_step!,
+        model_step! = daisyworld_step!,
+        scheduler = Schedulers.fastest,
+    )
+    cells = collect(positions(model))
+    white_cells = sample(
+        abmrng(model),
+        cells,
+        floor(Int, init_white * length(cells));
+        replace = false,
+    )
+    for pos in white_cells
+        add_agent!(
+            pos,
+            model,
+            :white,
+            rand(abmrng(model), 0:max_age),
+            albedo_white,
+        )
+    end
+    black_cells = sample(
+        abmrng(model),
+        setdiff(cells, white_cells),
+        floor(Int, init_black * length(cells));
+        replace = false,
+    )
+    for pos in black_cells
+        add_agent!(
+            pos,
+            model,
+            :black,
+            rand(abmrng(model), 0:max_age),
+            albedo_black,
+        )
+    end
+    for pos in positions(model)
+        update_surface_temperature!(pos, model)
+    end
+    model
+end
+
+advance!(model, n = 1) = Agents.step!(model, n)
+
+function measure(model)
+    black = count(a -> a.breed == :black, allagents(model))
+    white = count(a -> a.breed == :white, allagents(model))
+    albedo = mean(
+        isempty(p, model) ? model.surface_albedo :
+        model[id_in_position(p, model)].albedo for
+        p in positions(model)
+    )
+    (;
+        time = model.tick,
+        black,
+        white,
+        temperature = mean(model.temperature),
+        luminosity = model.solar_luminosity,
+        albedo,
     )
 end
+
+end
 ```
 
-Листинг 3 — Полная функция событийного моделирования из `src/queueing_models.jl`
+## Сохранение наблюдений и графиков
 
-Интервалы формируются как `randexp(rng) / rate`. Начальные числа генератора
-фиксируются, что обеспечивает повторяемость. Время ожидания каждой обслуженной
-заявки вычисляется как разность между началом обслуживания и поступлением.
-
-При приходе счётчик `arrivals` увеличивается даже для отклонённой заявки.
-Если вместимость не исчерпана, время поступления добавляется в конец FIFO;
-для первой заявки сразу назначается уход. При уходе удаляется первый элемент,
-накапливаются ожидание и время в системе, затем назначается следующее обслуживание.
-
-Перед изменением состояния учитывается весь интервал от предыдущего события.
-После выхода из цикла добавляется остаток до `horizon`: без него средние
-длины и занятость были бы занижены. Площади делятся на длительность прогона,
-а ожидания усредняются только по обслуженным заявкам. Последние незавершённые
-заявки в эту выборку не входят; для короткого прогона это источник смещения.
-В начальный момент система пуста, отдельный период разогрева здесь не удаляется.
-
-# Базовый эксперимент
-
-Для сопоставления с учебной постановкой выбраны
-
-$$
-\lambda=30, \qquad \mu=33, \qquad T=1000,
-$$
-
-поэтому $\rho=0{,}9091$. За один прогон поступило и было обслужено 29 825
-заявок; потерь при практически неограниченном буфере не возникло.
-
-Базовый сценарий формирует единую таблицу теоретических и имитационных
-значений, после чего рассчитывает относительную ошибку каждой характеристики.
+В `src/experiments.jl` находятся общие функции трёх типов: снимок решётки,
+сбор временного ряда и построение панелей. В CSV включается начальная точка,
+поэтому опыт на 1000 шагов содержит 1001 строку. Среднее альбедо вычисляется
+по всей поверхности, включая свободные ячейки, а не только по растениям.
 
 ```julia
-# # Система массового обслуживания M/M/1
-#
-# **Цель:** выполнить дискретно-событийное моделирование одноканальной СМО,
-# сравнить статистические оценки с формулами теории очередей.
+using Agents, CSV, DataFrames, DrWatson, Statistics, CairoMakie
+include(joinpath(@__DIR__, "daisyworld.jl"))
+using .DaisyworldModel
 
-using DrWatson
-@quickactivate "project"
-ENV["GKSwstype"] = "100"
-using CSV, DataFrames, Plots, Statistics
-include(srcdir("queueing_models.jl"))
-using .QueueingModels
+imagefile(name) =
+    (mkpath(projectdir("..", "image")); projectdir("..", "image", name))
+datafile(name, file) = (mkpath(datadir(name)); datadir(name, file))
+set_theme!(Theme(font = "DejaVu Sans", fontsize = 16))
 
-name = "01_mm1_queue"
-mkpath(datadir(name)); mkpath(plotsdir(name))
-
-lambda, mu = 30.0, 33.0
-result = simulate_mm1(lambda, mu; horizon=1000.0, capacity=10_000, seed=202603)
-theory = theoretical_mm1(lambda, mu)
-
-summary = DataFrame(metric=["rho", "L", "Lq", "W", "Wq"],
-    theory=[theory.rho, theory.mean_system, theory.mean_queue, theory.mean_sojourn, theory.mean_wait],
-    simulation=[result.utilization, result.mean_system, result.mean_queue, result.mean_sojourn, result.mean_wait])
-summary.relative_error = abs.((summary.simulation .- summary.theory) ./ summary.theory)
-CSV.write(datadir(name, "summary.csv"), summary)
-CSV.write(datadir(name, "waits.csv"), DataFrame(wait=result.waits))
-
-println("=== СМО M/M/1: базовый эксперимент ===")
-println("lambda = $lambda, mu = $mu, rho = $(round(theory.rho; digits=4))")
-println("Заявок: $(result.arrivals), обслужено: $(result.served), потеряно: $(result.lost)")
-show(summary; allrows=true, allcols=true); println()
-
-default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
-    left_margin=5 * Plots.mm)
-limit = searchsortedlast(result.times, 20.0)
-p1 = plot(result.times[1:limit], result.queue_lengths[1:limit]; seriestype=:steppost,
-    xlabel="Время", ylabel="Длина очереди", label="Q(t)",
-    title="Фрагмент траектории очереди M/M/1", size=(1000,620))
-savefig(p1, plotsdir(name, "queue_trajectory.png"))
-
-p2 = histogram(result.waits; bins=50, normalize=:pdf, alpha=0.65,
-    xlabel="Время ожидания", ylabel="Плотность", label="моделирование",
-    title="Распределение времени ожидания", size=(1000,620))
-savefig(p2, plotsdir(name, "wait_histogram.png"))
-
-p3 = plot(summary.metric, summary.theory; marker=:circle, markersize=8,
-    label="теория", ylabel="Значение", title="Теория и имитация M/M/1",
-    size=(1000,620))
-plot!(p3, summary.metric, summary.simulation; marker=:diamond, markersize=7,
-    linestyle=:dash, label="моделирование")
-savefig(p3, plotsdir(name, "theory_vs_simulation.png"))
-
-# Полученные оценки близки к стационарным формулам; небольшое отличие связано
-# с конечной длительностью одного случайного прогона.
-```
-
-Листинг 4 — Полный сценарий базового эксперимента из `scripts/01_mm1_queue.jl`
-
-{{< pagebreak >}}
-
-| Показатель | Теория | Имитация | Относительная ошибка |
-|---|---:|---:|---:|
-| $\rho$ | 0,9091 | 0,9146 | 0,60% |
-| $L$ | 10,0000 | 9,5247 | 4,75% |
-| $L_q$ | 9,0909 | 8,6101 | 5,29% |
-| $W$ | 0,3333 | 0,3194 | 4,19% |
-| $W_q$ | 0,3030 | 0,2887 | 4,73% |
-
-: Сопоставление теоретических и имитационных оценок {#tbl-base}
-
-Расхождение в @tbl-base объясняется конечной длительностью случайного прогона.
-Все пять оценок согласуются с теорией с ошибкой не более 5,3%.
-
-Столбцы `theory` и `simulation` имеют одинаковый порядок метрик.
-В `relative_error` хранится доля, а в таблице отчёта она переведена в проценты.
-Помимо `summary.csv`, сценарий сохраняет все наблюдённые ожидания в `waits.csv`.
-Траектория изображается ступенчатой линией на первых 20 единицах времени;
-гистограмма нормирована как плотность. Все три рисунка создаются из того же
-объекта `result`, без повторного случайного прогона.
-
-![Сопоставление теории и имитации M/M/1](../image/03-plot.png){#fig-compare width=86%}
-
-Траектория очереди является кусочно-постоянной: приход увеличивает её, а уход
-уменьшает. На коротком фрагменте видны случайные серии заявок и периоды
-разгрузки прибора.
-
-![Фрагмент траектории длины очереди](../image/01-plot.png){#fig-queue width=88%}
-
-Распределение времени ожидания асимметрично: большинство заявок обслуживается
-с небольшой задержкой, но формируется длинный правый хвост.
-
-![Гистограмма времени ожидания](../image/02-plot.png){#fig-wait width=86%}
-
-# Нагрузочный эксперимент
-
-Интенсивность обслуживания зафиксирована на уровне $\mu=33$, а $\lambda$
-изменялась от 10 до 32,5. Для каждой точки выполнено 30 независимых прогонов
-продолжительностью 1500 единиц модельного времени.
-
-```julia
-# # Нагрузочный эксперимент для M/M/1
-#
-# **Цель:** показать нелинейный рост очереди при приближении загрузки к единице.
-
-using DrWatson
-@quickactivate "project"
-ENV["GKSwstype"] = "100"
-using CSV, DataFrames, Plots, Statistics
-include(srcdir("queueing_models.jl"))
-using .QueueingModels
-
-name = "02_load_scan"
-mkpath(datadir(name)); mkpath(plotsdir(name))
-mu = 33.0
-lambdas = [10.0, 20.0, 25.0, 28.0, 30.0, 31.5, 32.5]
-rows = NamedTuple[]
-
-for (i, lambda) in enumerate(lambdas)
-    runs = [simulate_mm1(lambda, mu; horizon=1500.0, seed=202603 + 100i + r) for r in 1:30]
-    theory = theoretical_mm1(lambda, mu)
-    push!(rows, (lambda=lambda, rho=theory.rho,
-        theory_Lq=theory.mean_queue,
-        simulation_Lq=mean(getfield.(runs, :mean_queue)),
-        simulation_Wq=mean(getfield.(runs, :mean_wait)),
-        utilization=mean(getfield.(runs, :utilization))))
+function snapshot(model; title = "Daisyworld")
+    fig = Figure(size = (850, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = "$title · t=$(model.tick)",
+        xlabel = "x",
+        ylabel = "y",
+        aspect = 1,
+    )
+    hm = heatmap!(
+        ax,
+        model.temperature;
+        colormap = :thermal,
+        colorrange = (-20, 60),
+    )
+    for (breed, color) in ((:white, :white), (:black, :black))
+        plants = [a.pos for a in allagents(model) if a.breed == breed]
+        isempty(plants) || scatter!(
+            ax,
+            [p[1] for p in plants],
+            [p[2] for p in plants];
+            color,
+            marker = :circle,
+            markersize = 8,
+            strokewidth = 0.4,
+            strokecolor = :gray,
+        )
+    end
+    Colorbar(fig[1, 2], hm; label = "Температура, °C")
+    fig
 end
 
-scan = DataFrame(rows)
-CSV.write(datadir(name, "load_scan.csv"), scan)
-println("=== Нагрузочный эксперимент M/M/1 ===")
-show(scan; allrows=true, allcols=true); println()
+function history(model, steps = 1000)
+    rows = [measure(model)]
+    for _ in 1:steps
+        advance!(model)
+        push!(rows, measure(model))
+    end
+    DataFrame(rows)
+end
 
-default(fontfamily="DejaVu Sans", linewidth=2.4, framestyle=:box, gridalpha=0.22,
-    left_margin=5 * Plots.mm)
-p1 = plot(scan.rho, scan.theory_Lq; label="теория", xlabel="Загрузка rho",
-    ylabel="Средняя длина очереди", title="Рост очереди при rho → 1",
-    size=(1000,620), marker=:circle)
-plot!(p1, scan.rho, scan.simulation_Lq; label="моделирование", marker=:diamond)
-savefig(p1, plotsdir(name, "load_curve.png"))
+function countfigure(df; title = "Численность маргариток")
+    fig = Figure(size = (1000, 550))
+    ax = Axis(
+        fig[1, 1],
+        title = title,
+        xlabel = "Модельный шаг",
+        ylabel = "Число растений",
+    )
+    lines!(ax, df.time, df.black; color = :black, label = "Чёрные")
+    lines!(ax, df.time, df.white; color = :orange, label = "Белые")
+    axislegend(ax; position = :rt)
+    fig
+end
 
-p2 = plot(scan.rho, scan.simulation_Wq; label="Wq", xlabel="Загрузка rho",
-    ylabel="Среднее ожидание", title="Задержка в зависимости от нагрузки",
-    size=(1000,620), marker=:circle, color=:red)
-savefig(p2, plotsdir(name, "wait_curve.png"))
+function dynamicsfigure(df; title = "Daisyworld: обратная связь")
+    fig = Figure(size = (1000, 1000))
+    axes = [
+        Axis(fig[i, 1], ylabel = label) for
+        (i, label) in enumerate((
+            "Число растений",
+            "Температура, °C",
+            "Светимость",
+            "Среднее альбедо",
+        ))
+    ]
+    axes[1].title = title
+    lines!(axes[1], df.time, df.black; color = :black, label = "Чёрные")
+    lines!(axes[1], df.time, df.white; color = :orange, label = "Белые")
+    axislegend(axes[1]; position = :rt)
+    for (ax, column) in
+        zip(axes[2:4], (:temperature, :luminosity, :albedo))
+        lines!(ax, df.time, df[!, column]; color = :royalblue)
+    end
+    axes[4].xlabel = "Модельный шаг"
+    linkxaxes!(axes...)
+    fig
+end
 
-# При rho, близком к единице, статистическая вариативность возрастает вместе
-# со средней длиной очереди и временем ожидания.
+parameter_sets() = dict_list(
+    Dict(
+        :max_age=>[25, 40],
+        :init_white=>[0.2, 0.8],
+        :init_black=>0.2,
+        :seed=>165,
+    ),
+)
+
+function savehistory(df, name)
+    CSV.write(datafile(name, "trajectory.csv"), df)
+    show(last(df, 5); allcols = true)
+    println()
+    df
+end
 ```
 
-Листинг 5 — Полный сценарий нагрузочного эксперимента из `scripts/02_load_scan.jl`
+# Основные эксперименты
+
+## Начальное состояние и развитие пространственной структуры
+
+Сценарий выполняет пять шагов, затем ещё сорок. Последний снимок соответствует
+моменту 45, а не 40: это исправление подписи, не изменение числа выполненных
+шагов. Литературный фрагмент ниже автоматически получен из `daisyworld.jl`.
+
+{{< include ../project/markdown/daisyworld/daisyworld-report.qmd >}}
+
+![Начальное размещение маргариток, t = 0](../image/01-plot.png){#fig-initial width=85%}
+
+![Состояние поля после пяти шагов](../image/02-plot.png){#fig-step5 width=85%}
+
+![Состояние после суммарных 45 шагов](../image/03-plot.png){#fig-step45 width=85%}
+
+| Шаг | Чёрные | Белые | Средняя T, °C | Альбедо |
+| --- | --- | --- | --- | --- |
+| 0 | 180 | 180 | 16,914 | 0,44 |
+| 5 | 563 | 332 | 30,365 | 0,435 |
+| 45 | 450 | 435 | 20,129 | 0,494 |
+
+: Контрольные состояния базового опыта {#tbl-snapshots}
+
+Начальное состояние содержит свободные клетки и смешанное размещение видов (@fig-initial).
+Сравнение (@fig-step5; @fig-step45) позволяет проследить формирование участков
+с различной температурой. Цветовое поле и отметки растений описывают разные
+переменные: тёмный фон сам по себе не означает наличие чёрной маргаритки.
+
+## Анимация
+
+Отдельный сценарий записывает 60 последовательных состояний t = 0…59 с частотой
+10 кадров в секунду. Результат `image/01-animation.gif` показывает эволюцию
+одной модели, а таблица `data/daisyworld-animate/frames.csv` связывает кадры
+с фактическим временем и численностями. GIF остаётся динамическим приложением;
+печатный отчёт содержит контрольные состояния из предыдущего опыта.
+
+{{< include ../project/markdown/daisyworld-animate/daisyworld-animate-report.qmd >}}
+
+## Численность при постоянной светимости
+
+В `daisyworld-count.jl` исходная модель запускается заново с теми же параметрами
+и seed. На 1000 шагах регистрируются оба вида; светимость остаётся равной
+единице. Это отдельный опыт, а не продолжение состояния t = 45.
+
+{{< include ../project/markdown/daisyworld-count/daisyworld-count-report.qmd >}}
+
+![Численности при постоянной светимости](../image/04-plot.png){#fig-count width=100%}
+
+К шагу 1000 сохраняются оба вида: 604 чёрных и 287 белых растений. За весь опыт численность чёрных изменяется от 180 до 697, белых — от 171 до 653. Временной ряд содержит колебания, а не монотонный выход к одной постоянной численности. Средняя температура в конце равна 34,754 °C; это значение отдельного момента, а не среднее за весь опыт.
+
+## Реакция на изменение солнечной светимости
+
+Четыре панели (@fig-lum) показывают численности, среднюю температуру, светимость
+и среднее альбедо. Панель альбедо добавлена согласно текстовому заданию
+практикума; в демонстрационном фрагменте кода она отсутствует.
+
+{{< include ../project/markdown/daisyworld-luminosity/daisyworld-luminosity-report.qmd >}}
+
+![Численности и состояние среды в сценарии ramp](../image/05-plot.png){#fig-lum width=86%}
 
 {{< pagebreak >}}
 
-| $\lambda$ | $\rho$ | $L_q$ (теория) | $L_q$ (модель) | $W_q$ (модель) |
-|---:|---:|---:|---:|---:|
-| 10,0 | 0,3030 | 0,1318 | 0,1314 | 0,0132 |
-| 20,0 | 0,6061 | 0,9324 | 0,9199 | 0,0461 |
-| 25,0 | 0,7576 | 2,3674 | 2,3502 | 0,0940 |
-| 28,0 | 0,8485 | 4,7515 | 4,7150 | 0,1682 |
-| 30,0 | 0,9091 | 9,0909 | 9,0916 | 0,3028 |
-| 31,5 | 0,9545 | 20,0455 | 20,2187 | 0,6422 |
-| 32,5 | 0,9848 | 64,0152 | 65,3523 | 2,0059 |
+| Шаг | L | Чёрные | Белые | T, °C | Альбедо |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 1 | 180 | 180 | 16,914 | 0,44 |
+| 200 | 1 | 512 | 378 | 26,589 | 0,462 |
+| 400 | 2 | 0 | 900 | 29,556 | 0,75 |
+| 500 | 2 | 0 | 900 | 30,105 | 0,75 |
+| 750 | 1,375 | 0 | 883 | 5,247 | 0,743 |
+| 1 000 | 1,375 | 0 | 892 | 3,938 | 0,747 |
 
-: Результаты нагрузочного эксперимента {#tbl-load}
+: Контрольные точки изменения светимости {#tbl-ramp}
 
-Для каждого уровня нагрузки усредняются 30 значений `mean_queue` и
-`mean_wait`; это не объединение отдельных ожиданий в одну выборку.
-Индекс уровня и номер повтора включены в seed. Поэтому строка $\lambda=30$
-здесь отличается от одиночного базового опыта: $L_q=9{,}0916$, а не $8{,}6101$.
-Разные начальные числа позволяют повторить серию без совпадения траекторий.
-Доверительные интервалы в данном эксперименте не рассчитывались, поэтому
-таблица характеризует средние оценки, а не точность с заданной вероятностью.
+В данной траектории чёрные маргаритки исчезают на шаге 310, когда L = 1,55. В конце остаётся 892 белых растений, среднее альбедо равно 0,747, температура — 3,938 °C. Увеличение светимости сначала меняет состав популяции в пользу белых растений. После исчезновения чёрного вида обратное уменьшение L не восстанавливает исходный состав: внешнего заселения и мутаций в модели нет. Следовательно, реакция зависит от предыстории, а саморегуляция не означает сохранения обоих видов при любом воздействии.
 
-![Средняя очередь при изменении загрузки](../image/04-plot.png){#fig-load width=88%}
+# Параметрические исследования
 
-При $\rho=0{,}9848$ средняя очередь превышает 65 заявок, тогда как при
-$\rho=0{,}7576$ она близка к 2,35. Следовательно, резерв пропускной способности
-нельзя оценивать линейно.
+## План эксперимента
 
-![Среднее ожидание при изменении загрузки](../image/05-plot.png){#fig-wait-load width=88%}
+DrWatson `dict_list` формирует декартово произведение `max_age ∈ {25,40}` и
+`init_white ∈ {0.2,0.8}`. Начальная доля чёрных фиксирована на 0,2, seed — 165.
+При `init_white = 0.8` поле первоначально заполнено полностью; появление
+потомства возможно лишь после освобождения клеток. На каждое сочетание
+приходится самостоятельный запуск, а не повторное использование одной модели.
 
-# Производные форматы и Jupyter
+## Параметрические состояния
 
-Сценарий `scripts/tangle.jl` использует `Literate.jl` и для каждого
-литературного исходника формирует чистый Julia-файл, Quarto-документ и
-Jupyter-ноутбук. Полученные IPYNB выполняются с ядром Julia лабораторной
-работы, поэтому в них сохраняются реальные таблицы и текстовый вывод.
+{{< include ../project/markdown/daisyworld__param/daisyworld__param-report.qmd >}}
+
+### Максимальный возраст 25, начальная доля белых 0,2
+
+![Параметрический опыт 1, t = 0](../image/06-plot.png){#fig-param-state-1-0 width=78%}
+
+![Параметрический опыт 1, t = 5](../image/07-plot.png){#fig-param-state-1-1 width=78%}
+
+![Параметрический опыт 1, t = 45](../image/08-plot.png){#fig-param-state-1-2 width=78%}
+
+### Максимальный возраст 25, начальная доля белых 0,8
+
+![Параметрический опыт 2, t = 0](../image/09-plot.png){#fig-param-state-2-0 width=78%}
+
+![Параметрический опыт 2, t = 5](../image/10-plot.png){#fig-param-state-2-1 width=78%}
+
+![Параметрический опыт 2, t = 45](../image/11-plot.png){#fig-param-state-2-2 width=78%}
+
+### Максимальный возраст 40, начальная доля белых 0,2
+
+![Параметрический опыт 3, t = 0](../image/12-plot.png){#fig-param-state-3-0 width=78%}
+
+![Параметрический опыт 3, t = 5](../image/13-plot.png){#fig-param-state-3-1 width=78%}
+
+![Параметрический опыт 3, t = 45](../image/14-plot.png){#fig-param-state-3-2 width=78%}
+
+### Максимальный возраст 40, начальная доля белых 0,8
+
+![Параметрический опыт 4, t = 0](../image/15-plot.png){#fig-param-state-4-0 width=78%}
+
+![Параметрический опыт 4, t = 5](../image/16-plot.png){#fig-param-state-4-1 width=78%}
+
+![Параметрический опыт 4, t = 45](../image/17-plot.png){#fig-param-state-4-2 width=78%}
+
+{{< pagebreak >}}
+
+| Возраст | Доля белых | Чёрные | Белые | T, °C |
+| --- | --- | --- | --- | --- |
+| 25 | 0,2 | 450 | 435 | 20,129 |
+| 25 | 0,8 | 462 | 437 | 18,082 |
+| 40 | 0,2 | 306 | 587 | 10,068 |
+| 40 | 0,8 | 487 | 413 | 25,956 |
+
+: Параметрические состояния на шаге 45 {#tbl-param-state}
+
+## Численности при разных возрасте и составе
+
+{{< include ../project/markdown/daisyworld-count__param/daisyworld-count__param-report.qmd >}}
+
+![Численности: max_age = 25, init_white = 0.2](../image/18-plot.png){#fig-param-count-1 width=100%}
+
+![Численности: max_age = 25, init_white = 0.8](../image/19-plot.png){#fig-param-count-2 width=100%}
+
+![Численности: max_age = 40, init_white = 0.2](../image/20-plot.png){#fig-param-count-3 width=100%}
+
+![Численности: max_age = 40, init_white = 0.8](../image/21-plot.png){#fig-param-count-4 width=100%}
+
+{{< pagebreak >}}
+
+| Возраст | Доля белых | Чёрные | Белые | T, °C |
+| --- | --- | --- | --- | --- |
+| 25 | 0,2 | 604 | 287 | 34,754 |
+| 25 | 0,8 | 503 | 394 | 24,873 |
+| 40 | 0,2 | 498 | 393 | 24,505 |
+| 40 | 0,8 | 483 | 416 | 22,695 |
+
+: Конечные состояния при постоянной светимости {#tbl-param-count}
+
+Во всех четырёх опытах при L = 1 оба вида сохраняются до шага 1000. Начальный состав и срок жизни меняют фазу и амплитуду колебаний. Сравнение только последней строки не задаёт строгого ранжирования устойчивости: популяции находятся в разных фазах динамики, поэтому таблицу нужно читать совместно с полными рядами.
+
+## Светимость и начальная популяция
+
+{{< include ../project/markdown/daisyworld-luminosity__param/daisyworld-luminosity__param-report.qmd >}}
+
+![Сценарий ramp: max_age = 25, init_white = 0.2](../image/22-plot.png){#fig-param-ramp-1 width=85%}
+
+![Сценарий ramp: max_age = 25, init_white = 0.8](../image/23-plot.png){#fig-param-ramp-2 width=85%}
+
+![Сценарий ramp: max_age = 40, init_white = 0.2](../image/24-plot.png){#fig-param-ramp-3 width=85%}
+
+![Сценарий ramp: max_age = 40, init_white = 0.8](../image/25-plot.png){#fig-param-ramp-4 width=85%}
+
+| Возраст | Доля белых | Чёрные | Белые | T, °C | Альбедо |
+| --- | --- | --- | --- | --- | --- |
+| 25 | 0,2 | 0 | 892 | 3,938 | 0,747 |
+| 25 | 0,8 | 0 | 864 | 6,258 | 0,736 |
+| 40 | 0,2 | 0 | 892 | 4,115 | 0,747 |
+| 40 | 0,8 | 0 | 882 | 5,667 | 0,743 |
+
+: Конечные состояния параметрической серии ramp {#tbl-param-ramp}
+
+В каждом из четырёх сочетаний чёрный вид отсутствует к концу сценария ramp. Белая популяция составляет от 864 до 892 растений. Таким образом, качественный итог воздействия совпадает для выбранной сетки, хотя переходные состояния, численности и температуры различаются. Это вывод для указанных четырёх опытов и seed, а не для всей области параметров.
+
+# Литературное программирование и Jupyter
+
+Семь файлов в корне `scripts/` — литературные первоисточники. `tangle.jl`
+получает из каждого чистый Julia-скрипт, выполняемый блокнот IPYNB и Quarto QMD.
+Дополнительный статический QMD содержит тот же код в обычных блоках `julia`
+и включается в тематические разделы настоящего отчёта. Сборка отчёта не
+повторяет расчёты и не меняет научные результаты.
 
 ```julia
 using DrWatson
 @quickactivate "project"
 using Literate
 
-function generate_formats(source::AbstractString)
+execute_notebooks = "--execute" in ARGS
+sources = filter(!=("--execute"), ARGS)
+for source in sources
     name = splitext(basename(source))[1]
-    foreach(mkpath, (scriptsdir(name), projectdir("markdown", name), projectdir("notebooks", name)))
-    Literate.script(source, scriptsdir(name); name=name, credit=false)
-    Literate.notebook(source, projectdir("notebooks", name); name=name, execute=false, credit=false)
-    Literate.markdown(source, projectdir("markdown", name); name=name,
-        flavor=Literate.QuartoFlavor(), credit=false)
-end
-
-foreach(generate_formats, ARGS)
-```
-
-Листинг 6 — Генерация производных форматов в `scripts/tangle.jl`
-
-![Выполненный блокнот базового эксперимента M/M/1](../image/01-jupyter.png){#fig-lab03-jupyter-base width=92%}
-
-![Выполненный блокнот нагрузочного эксперимента](../image/02-jupyter.png){#fig-lab03-jupyter-load width=92%}
-
-# Проверка и управление версиями
-
-Тесты проверяют известный случай $\lambda=3$, $\mu=5$, неотрицательность
-очереди и ожиданий, отсутствие потерь при неограниченном буфере, а также
-близость загрузки и $L$ к аналитическим значениям.
-
-```julia
-using Test
-include(joinpath(@__DIR__, "..", "src", "queueing_models.jl"))
-using .QueueingModels
-
-@testset "M/M/1 formulas" begin
-    t = theoretical_mm1(3.0, 5.0)
-    @test t.rho == 0.6
-    @test isapprox(t.mean_system, 1.5)
-    @test isapprox(t.mean_queue, 0.9)
-    @test isapprox(t.mean_sojourn, 0.5)
-    @test_throws ArgumentError theoretical_mm1(5.0, 5.0)
-end
-
-@testset "M/M/1 simulation" begin
-    r = simulate_mm1(3.0, 5.0; horizon=20_000.0, seed=42)
-    @test r.arrivals >= r.served
-    @test r.lost == 0
-    @test abs(r.utilization - 0.6) < 0.03
-    @test abs(r.mean_system - 1.5) < 0.15
-    @test all(>=(0), r.queue_lengths)
-    @test all(>=(0), r.waits)
+    Literate.script(source, scriptsdir(name); name, credit = false)
+    Literate.notebook(
+        source,
+        projectdir("notebooks", name);
+        name,
+        execute = execute_notebooks,
+        credit = false,
+    )
+    Literate.markdown(
+        source,
+        projectdir("markdown", name);
+        name,
+        flavor = Literate.QuartoFlavor(),
+        credit = false,
+    )
+    # A static derivative is included in the report without repeating calculations.
+    Literate.markdown(
+        source,
+        projectdir("markdown", name);
+        name = name*"-report",
+        flavor = Literate.QuartoFlavor(),
+        credit = false,
+        postprocess = text -> replace(
+            replace(text, "```{julia}"=>"```julia"),
+            r"^(#{1,4}) "m => heading -> "##"*heading,
+        ),
+    )
 end
 ```
-
-Листинг 7 — Статистические проверки в `test/runtests.jl`
-
-Все 11 проверок пройдены: пять проверок стационарных формул и шесть проверок
-имитации. Для тестового прогона используются $\lambda=3$, $\mu=5$,
-$T=20000$ и seed 42, то есть параметры отличаются от демонстрационного опыта.
-Допуски 0,03 для загрузки и 0,15 для среднего числа заявок учитывают случайность.
-Эти тесты не являются доказательством стационарности любого набора параметров.
-
-![Результат выполнения автоматических проверок](../image/03-terminal.png){#fig-lab03-tests width=92%}
-
-## Воспроизведение расчётов и сборка материалов
-
-Команды выполняются в терминале контейнера из каталога лабораторной.
 
 ```bash
-cd /workspace/labs/lab03/project
-julia --project=. -e 'using Pkg; Pkg.instantiate()'
-make setup
-make all
-make test
+make notebooks
+make docs
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
 ```
 
-Листинг 8 — Восстановление окружения, расчёты и запуск JupyterLab
+![Открытый выполненный блокнот Julia](../image/01-jupyter.png){#fig-notebook-1 width=94%}
 
-Цель `tangle` создаёт производные исходники, `run` выполняет оба эксперимента,
-`notebooks` исполняет IPYNB, `docs` собирает вычислительные HTML-страницы,
-а `test` запускает проверки общего модуля. В JupyterLab открываются файлы
-из `notebooks`; ядро Julia устанавливается командой `make setup`.
+![Результаты эксперимента в Jupyter](../image/02-jupyter.png){#fig-notebook-2 width=94%}
+
+{{< pagebreak >}}
+
+::: {tbl-colwidths="[62,10,14,14]"}
+
+| Блокнот | Ячеек | Готово | Ошибок |
+| --- | --- | --- | --- |
+| `daisyworld` | 3 | 3 | 0 |
+| `daisyworld-animate` | 4 | 4 | 0 |
+| `daisyworld-count` | 3 | 3 | 0 |
+| `daisyworld-count__param` | 3 | 3 | 0 |
+| `daisyworld-luminosity` | 3 | 3 | 0 |
+| `daisyworld-luminosity__param` | 3 | 3 | 0 |
+| `daisyworld__param` | 3 | 3 | 0 |
+
+: Проверка выполненных блокнотов {#tbl-notebooks}
+
+:::
+
+# Проверки и воспроизведение
+
+Проверены число агентов после инициализации, допустимость долей, предел
+вместимости решётки, корректность возрастов и температур, воспроизводимость
+при одинаковом seed и точные границы интервалов изменения светимости.
+Тесты не являются доказательством климатической достоверности модели:
+они контролируют реализацию принятого алгоритма.
+
+```julia
+using Test, Agents
+include("../src/daisyworld.jl")
+using .DaisyworldModel
+
+@testset "Daisyworld: initial state and constraints" begin
+    m = daisyworld()
+    @test measure(m).white == 180
+    @test measure(m).black == 180
+    @test length(unique(a.pos for a in allagents(m))) == nagents(m)
+    @test all(isfinite, m.temperature)
+    @test_throws ArgumentError daisyworld(
+        init_white = 0.9,
+        init_black = 0.2,
+    )
+    @test_throws ArgumentError daisyworld(max_age = 0)
+    @test_throws ArgumentError daisyworld(griddims = (2, 2))
+end
+@testset "Daisyworld: dynamics and reproducibility" begin
+    a, b = daisyworld(seed = 165), daisyworld(seed = 165)
+    advance!(a, 45)
+    advance!(b, 45)
+    @test measure(a) == measure(b)
+    @test a.temperature == b.temperature
+    @test a.tick == 45
+    @test nagents(a) <= 900
+    @test 0 <= measure(a).albedo <= 1
+    @test all(x -> x.age < a.max_age, allagents(a))
+    empty = daisyworld(init_white = 0.0, init_black = 0.0)
+    advance!(empty, 10)
+    @test nagents(empty) == 0
+end
+@testset "Daisyworld: prescribed solar schedule" begin
+    m = daisyworld(scenario = :ramp, init_white = 0.0, init_black = 0.0)
+    advance!(m, 200)
+    @test m.solar_luminosity ≈ 1.0
+    advance!(m, 200)
+    @test m.solar_luminosity ≈ 2.0
+    advance!(m, 100)
+    @test m.solar_luminosity ≈ 2.0
+    advance!(m, 250)
+    @test m.solar_luminosity ≈ 1.375
+    advance!(m, 250)
+    @test m.solar_luminosity ≈ 1.375
+end
+```
+
+Повторный запуск завершился успешно: 19 проверок.
+
+![Фактический вывод команды make test](../image/03-terminal.png){#fig-tests width=94%}
+
+Из каталога проекта расчёты, блокноты, HTML-документация и тесты запускаются
+командой `make all`. Сборка отчёта выполняется отдельно:
 
 ```bash
-cd /workspace/labs/lab03/report
-make all
-cd ../presentation
+cd ../report
 make all
 ```
 
-Листинг 9 — Сборка отчёта DOCX/PDF и HTML-презентации
-
-Quarto создаёт DOCX и HTML, LibreOffice — PDF. PPTX редактируется отдельно;
-цель `make all` презентации пересобирает HTML и проверяет наличие PPTX.
+Начальный seed обеспечивает повторяемость модели при закреплённых версиях
+пакетов, порядке обхода и параметрах. Исследование содержит по одному seed
+на сочетание параметров, поэтому выводы относятся к этим траекториям;
+доверительные интервалы ансамбля независимых миров не оценивались.
 
 # Выводы
 
-Дискретно-событийная модель M/M/1 реализована и проверена. Для базового режима
-$\rho=0{,}9091$ имитационные характеристики согласуются со стационарными
-формулами с максимальной относительной ошибкой 5,3%. Нагрузочный эксперимент
-подтвердил резкий рост очереди и ожидания при приближении $\lambda$ к $\mu$.
-Получен полностью воспроизводимый Julia-проект с таблицами, графиками,
-документацией, блокнотами и тестами.
+Реализованы и выполнены семь самостоятельных сценариев Daisyworld, включая анимацию и три параметрических расширения. При постоянной светимости L = 1 оба вида сосуществуют с колеблющимися численностями. В базовом сценарии ramp чёрный вид исчезает на шаге 310; снижение светимости не возвращает его без механизма повторного заселения. Во всех четырёх параметрических опытах ramp конечная популяция состоит только из белых маргариток.
+
+Подготовлены полные временные ряды, контрольные состояния, выполненные блокноты и документация. Проверки подтверждают корректность и повторяемость алгоритма, но не снимают ограничений учебной модели: решётка мала, обновление асинхронное, мутаций нет, ансамблевая неопределённость не оценивалась.
 
 # Источники
 
-1. Gross D., Shortle J. F., Thompson J. M., Harris C. M. *Fundamentals of
-   Queueing Theory*. Wiley, 2018.
-2. Julia Documentation. <https://docs.julialang.org/>
-3. Literate.jl Documentation. <https://fredrikekre.github.io/Literate.jl/>
-4. Quarto Documentation. <https://quarto.org/docs/>
+1. Королькова А. В., Кулябов Д. С. *Имитационное моделирование. Практикум*.
+   Глава 3 «Модель Daisyworld», стр. 115–135.
+2. Agents.jl. Документация библиотеки агентного моделирования:
+   <https://juliadynamics.github.io/Agents.jl/stable/>.
+3. DrWatson.jl. Организация научных проектов:
+   <https://juliadynamics.github.io/DrWatson.jl/stable/>.
+4. Literate.jl. Производные форматы литературных исходников:
+   <https://fredrikekre.github.io/Literate.jl/v2/>.
+5. CairoMakie. Построение графиков и запись анимации:
+   <https://docs.makie.org/stable/>.
