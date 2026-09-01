@@ -1,7 +1,7 @@
 OUTPUT := _output
 SOURCE := simulation-modeling-lab03-presentation.qmd
 FINAL := simulation-modeling-lab03-presentation.html
-FINAL_PPTX := simulation-modeling-lab03-presentation.pptx
+FINAL_PDF := simulation-modeling-lab03-presentation.pdf
 
 .PHONY: all html verify clean
 
@@ -13,7 +13,7 @@ html:
 
 verify:
 	@test -s $(FINAL)
-	@test -s $(FINAL_PPTX)
+	@test -s $(FINAL_PDF)
 
 clean:
 	rm -rf $(OUTPUT) .quarto
