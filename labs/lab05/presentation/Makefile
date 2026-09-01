@@ -1,7 +1,7 @@
 OUTPUT := _output
 SOURCE := simulation-modeling-lab05-presentation.qmd
 FINAL := simulation-modeling-lab05-presentation.html
-PPTX := simulation-modeling-lab05-presentation.pptx
+PDF := simulation-modeling-lab05-presentation.pdf
 
 .PHONY: all html verify clean
 
@@ -13,8 +13,7 @@ html:
 
 verify:
 	@test -s $(FINAL)
-	@test -s $(PPTX)
-	@unzip -t $(PPTX) >/dev/null
+	@test -s $(PDF)
 
 clean:
 	rm -rf $(OUTPUT) .quarto
