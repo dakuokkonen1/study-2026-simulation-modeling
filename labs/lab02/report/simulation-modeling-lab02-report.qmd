@@ -739,7 +739,7 @@ all: tangle run notebooks docs test
 
 Отчёт собирается отдельной командой `make` в каталоге `labs/lab02/report`.
 Презентация собирается в каталоге `labs/lab02/presentation`; там формируются
-самодостаточный HTML и версия PPTX для просмотра в PowerPoint.
+HTML и PDF-версия презентации.
 
 # Выводы
 
