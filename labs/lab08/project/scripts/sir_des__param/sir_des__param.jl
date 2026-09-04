@@ -1,0 +1,37 @@
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+
+betas = [.03,.05,.07]
+contacts = [5.0,10.0,15.0]
+gammas = [.15,.25,.4]
+repeats = 10
+rows = NamedTuple[]
+for beta in betas, c in contacts, gamma in gammas, rep in 1:repeats
+    model, result = simulate(family="scan",p=[beta,c,gamma],seed=2000+rep)
+    push!(rows,result)
+end
+runs = save_table("sensitivity-runs",DataFrame(rows));
+
+summary = save_table("sensitivity-summary",summarize(runs,[:beta,:c,:gamma]))
+display(select(summary,:beta,:c,:gamma,:peak_mean,:peak_sd,:peak_time_mean,:R_fraction_mean))
+
+fig=plot(;xlabel="beta",ylabel="Peak I (mean ± SD)",size=(950,550))
+for gamma in gammas
+    part=sort(filter(r->r.c==10 && r.gamma==gamma,summary),:beta)
+    plot!(fig,part.beta,part.peak_mean;yerror=part.peak_sd,marker=:circle,
+        label="gamma=$(gamma)",lw=2)
+end
+savefig(fig,figure_path("02-plot"))
+display(fig)
+
+part=sort(filter(r->r.c==10 && r.gamma==.25,summary),:beta)
+fig2=plot(plot(part.beta,part.peak_time_mean;marker=:circle,label=false,
+    xlabel="beta",ylabel="Mean peak time"),
+    plot(part.beta,part.R_fraction_mean;marker=:circle,label=false,
+    xlabel="beta",ylabel="Mean R(40)/N");layout=(1,2),size=(1100,450))
+savefig(fig2,figure_path("03-plot"))
+display(fig2)

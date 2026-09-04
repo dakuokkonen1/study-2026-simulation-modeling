@@ -1,0 +1,22 @@
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+
+u0 = [990,10,0]
+p = [.05,10.0,.25]
+T = 40.0
+model, result = simulate(u0=u0,p=p,T=T,seed=1234);
+
+trajectory = out(model)
+display(first(trajectory,8))
+display(last(trajectory,5))
+
+summary = save_table("baseline",DataFrame([result]))
+display(select(summary,:peak_I,:peak_time,:S_T,:I_T,:R_T,:R_fraction))
+
+fig = plot_states(trajectory;title="SIR DES: beta=0.05, c=10, gamma=0.25")
+savefig(fig,figure_path("01-plot"))
+display(fig)

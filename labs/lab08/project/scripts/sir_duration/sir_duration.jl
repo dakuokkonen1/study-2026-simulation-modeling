@@ -1,0 +1,37 @@
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+
+rows=NamedTuple[]
+fig=plot(;xlabel="Time",ylabel="I",title="Infectious duration, seed=1234",size=(950,550))
+for fixed in (false,true), rep in 1:20
+    seed=rep==1 ? 1234 : 3000+rep
+    model,result=simulate(family="duration",seed=seed,fixed_duration=fixed)
+    push!(rows,result)
+    if rep==1
+        plot!(fig,model.ta,model.Ia;label=fixed ? "fixed 4 days" : "exponential mean 4",lw=2)
+        save_table("duration-"*(fixed ? "fixed" : "exponential"),
+            DataFrame(duration=model.disease_durations))
+    end
+end
+runs=save_table("duration-runs",DataFrame(rows));
+
+summary=save_table("duration-summary",summarize(runs,[:fixed]))
+display(summary)
+savefig(fig,figure_path("04-plot"))
+display(fig)
+
+fixed_data=CSV.read(datadir("analysis","duration-fixed.csv"),DataFrame)
+exp_data=CSV.read(datadir("analysis","duration-exponential.csv"),DataFrame)
+@assert all(isapprox.(fixed_data.duration,4.0;atol=1e-10))
+display(DataFrame(law=["fixed","exponential"],
+    completed=[nrow(fixed_data),nrow(exp_data)],
+    observed_mean=[mean(fixed_data.duration),mean(exp_data.duration)]))
+fig2=histogram(exp_data.duration;bins=25,label="completed exponential",
+    xlabel="Duration",ylabel="Count",size=(950,550))
+vline!(fig2,[4.0];label="fixed = 4",lw=3)
+savefig(fig2,figure_path("05-plot"))
+display(fig2)

@@ -1,0 +1,70 @@
+# Сравнение DES с обыкновенными дифференциальными уравнениями
+Методичка предлагает сопоставить индивидуальную стохастическую динамику
+с ОДУ. Здесь интенсивность заражения βcSI/(N−1): контакт исключает самого
+себя. Это не закон βSI из лабораторной 6. Замыкание среднего поля не
+учитывает корреляции S и I, поэтому не обязано совпадать со средним DES.
+
+```{julia}
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+```
+
+```{julia}
+rows=NamedTuple[]
+grid=collect(0.0:.5:40.0)
+curves=Matrix{Float64}(undef,length(grid),20)
+for rep in 1:20
+    model,result=simulate(family="ode-comparison",seed=7000+rep)
+    push!(rows,result)
+    curves[:,rep]=sample_step(out(model),grid,:I)
+end
+save_table("ode-comparison-runs",DataFrame(rows));
+```
+
+## RK4 и контроль шага
+
+```{julia}
+coarse=ode_sir(BASE_U,BASE_P,40.0;dt=.02)
+fine=ode_sir(BASE_U,BASE_P,40.0;dt=.01)
+error=maximum(abs.(Matrix(coarse[:,[:S,:I,:R]])-Matrix(fine[1:2:end,[:S,:I,:R]])))
+@assert error < 1e-4
+@assert maximum(abs.(fine.S+fine.I+fine.R .- 1000)) < 1e-8
+save_table("ode-trajectory",fine)
+save_table("ode-convergence",DataFrame(dt=[.02],reference_dt=[.01],max_difference=[error]))
+display((dt=.02,reference_dt=.01,max_difference=error))
+```
+
+## Ансамбль и разброс
+
+```{julia}
+avg=vec(mean(curves;dims=2))
+sd=vec(std(curves;dims=2))
+lo=[quantile(curves[j,:],.1) for j in axes(curves,1)]
+hi=[quantile(curves[j,:],.9) for j in axes(curves,1)]
+ensemble=save_table("ode-ensemble",DataFrame(t=grid,mean_I=avg,sd_I=sd,q10=lo,q90=hi))
+display(first(ensemble,8))
+```
+
+```{julia}
+fig=plot(grid,avg;ribbon=(avg-lo,hi-avg),fillalpha=.2,label="DES mean, 10–90% range",
+    xlabel="Time",ylabel="I",lw=2,size=(1000,550))
+plot!(fig,fine.t,fine.I;label="mean-field ODE",lw=2,linestyle=:dash)
+savefig(fig,figure_path("14-plot"))
+display(fig)
+```
+
+Полоса показывает межтраекторные квантили, а не доверительный интервал
+среднего. Двадцать повторов недостаточны для точной оценки редких событий.
+
+```{julia}
+k=argmax(fine.I)
+result=DataFrame(ode_peak=[fine.I[k]],ode_peak_time=[fine.t[k]],
+    des_mean_of_peaks=[mean(getproperty.(rows,:peak_I))],
+    des_peak_of_mean=[maximum(avg)])
+save_table("ode-comparison-summary",result)
+display(result)
+```

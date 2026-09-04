@@ -1,0 +1,2 @@
+family,N,I0,beta,c,gamma,T,seed,fixed,sigma,mu,birth_rate,vaccine_time,vaccine_fraction,peak_I,peak_time,S_T,E_T,I_T,R_T,R_fraction,ever_infected,new_infections,births,deaths,vaccinated,contacts,events,extinct,csv
+benchmark,10000,100,0.05,10.0,0.25,40.0,1234,false,Inf,0.0,0.0,-1.0,0.0,1551,21.044965073788873,2110,0,222,7668,0.7668,7890,7790,0,0,0,2196678,15458,false,data/sims/benchmark_N=10000_I0=100_beta=0p05_c=10p0_gamma=0p25_T=40p0_seed=1234_fixed=false_sigma=Inf_mu=0p0_br=0p0_vt=m1p0_vf=0p0.csv

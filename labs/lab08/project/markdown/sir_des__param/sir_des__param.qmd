@@ -1,0 +1,60 @@
+# Чувствительность к β, c и γ
+Полный факторный план: 3×3×3 сочетания, 10 повторов каждого.
+Сетка и число повторов выбраны для дополнительного задания 1.
+Одинаковые seed между сочетаниями облегчают сравнение, но после расхождения
+траекторий не означают попарно совпадающие контакты.
+
+```{julia}
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+```
+
+```{julia}
+betas = [.03,.05,.07]
+contacts = [5.0,10.0,15.0]
+gammas = [.15,.25,.4]
+repeats = 10
+rows = NamedTuple[]
+for beta in betas, c in contacts, gamma in gammas, rep in 1:repeats
+    model, result = simulate(family="scan",p=[beta,c,gamma],seed=2000+rep)
+    push!(rows,result)
+end
+runs = save_table("sensitivity-runs",DataFrame(rows));
+```
+
+## Средние показатели и межтраекторное стандартное отклонение
+peak_sd описывает разброс пика, а не ошибку одного конкретного запуска.
+
+```{julia}
+summary = save_table("sensitivity-summary",summarize(runs,[:beta,:c,:gamma]))
+display(select(summary,:beta,:c,:gamma,:peak_mean,:peak_sd,:peak_time_mean,:R_fraction_mean))
+```
+
+## Влияние β при c=10
+
+```{julia}
+fig=plot(;xlabel="beta",ylabel="Peak I (mean ± SD)",size=(950,550))
+for gamma in gammas
+    part=sort(filter(r->r.c==10 && r.gamma==gamma,summary),:beta)
+    plot!(fig,part.beta,part.peak_mean;yerror=part.peak_sd,marker=:circle,
+        label="gamma=$(gamma)",lw=2)
+end
+savefig(fig,figure_path("02-plot"))
+display(fig)
+```
+
+## Время пика и доля R(T)
+
+```{julia}
+part=sort(filter(r->r.c==10 && r.gamma==.25,summary),:beta)
+fig2=plot(plot(part.beta,part.peak_time_mean;marker=:circle,label=false,
+    xlabel="beta",ylabel="Mean peak time"),
+    plot(part.beta,part.R_fraction_mean;marker=:circle,label=false,
+    xlabel="beta",ylabel="Mean R(40)/N");layout=(1,2),size=(1100,450))
+savefig(fig2,figure_path("03-plot"))
+display(fig2)
+```

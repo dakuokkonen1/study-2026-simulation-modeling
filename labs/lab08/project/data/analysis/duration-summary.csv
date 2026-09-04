@@ -1,0 +1,3 @@
+fixed,replicates,peak_mean,peak_sd,peak_time_mean,R_fraction_mean,infected_mean,I_T_mean,extinction_fraction
+false,20,166.25,20.26112429986887,18.654999412394684,0.76115,777.55,16.4,0.0
+true,20,326.05,27.675706618659355,11.209236169511959,0.8128999999999997,812.9,0.0,1.0
