@@ -1,0 +1,41 @@
+# # Независимый анализ сохранённых CSV
+# Дополнительное задание 4. Здесь нет вызова simulate или sir_run:
+# анализируется ранее записанный базовый опыт. Имя CSV включает параметры
+# и seed, поэтому разные эксперименты не перезаписывают друг друга.
+using DrWatson
+@quickactivate "project"
+using project.SIRDES
+using CSV, DataFrames, Statistics, StatsPlots
+include(srcdir("experiments.jl"))
+using .Experiments
+
+#-
+index=CSV.read(datadir("analysis","baseline.csv"),DataFrame)
+trajectory=CSV.read(projectdir(index.csv[1]),DataFrame)
+@assert issorted(trajectory.t)
+@assert all(trajectory.S+trajectory.I+trajectory.R .== 1000)
+measured=trajectory_metrics(trajectory)
+for key in keys(measured)
+    @assert isapprox(measured[key],index[1,key];atol=1e-9)
+end
+summary=save_table("csv-validation",DataFrame([measured]))
+display(summary)
+#-
+# ## Число переходов и баланс
+counts=combine(groupby(trajectory,:event),nrow=>:count)
+display(counts)
+@assert last(trajectory.infections)==count(==("infection"),trajectory.event)
+#-
+# ## Событийные времена и регулярная сетка
+# Ступенчатая интерполяция берёт последнюю запись с t_event≤t.
+# Линейная интерполяция целочисленных состояний не используется.
+grid=collect(0.0:.5:40.0)
+grid_data=save_table("baseline-grid",DataFrame(t=grid,
+    S=sample_step(trajectory,grid,:S),I=sample_step(trajectory,grid,:I),
+    R=sample_step(trajectory,grid,:R)))
+display(first(grid_data,10))
+fig=plot(trajectory.t,trajectory.I;seriestype=:steppost,label="event log",
+    xlabel="Time",ylabel="I",size=(950,550))
+scatter!(fig,grid,grid_data.I;label="0.5 day grid",markersize=3)
+savefig(fig,figure_path("07-plot"))
+display(fig)
